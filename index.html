@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIthai Stock Management (Multi-user)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222636;
+    --surface3: #2a2f45;
+    --border: #2e3450;
+    --accent: #4f9cf9;
+    --accent2: #7c63f5;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --font: 'IBM Plex Sans Thai', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar {
+    width: 220px; min-width: 220px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 0; overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo h1 {
+    font-size: 15px; font-weight: 600; color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .sidebar-logo p { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .nav-section { padding: 12px 8px 4px; }
+  .nav-label {
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    letter-spacing: 1.2px; text-transform: uppercase;
+    padding: 0 8px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 6px; cursor: pointer;
+    color: var(--text2); font-size: 13px;
+    transition: all 0.15s; margin-bottom: 1px;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent2)22; color: var(--accent); font-weight: 500; }
+  .nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    padding: 14px 24px; border-bottom: 1px solid var(--border);
+    background: var(--surface); display: flex; align-items: center;
+    gap: 12px; flex-shrink: 0;
+  }
+  .topbar h2 { font-size: 15px; font-weight: 600; flex: 1; }
+  .topbar-actions { display: flex; gap: 8px; }
+
+  .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  /* Buttons */
+  .btn {
+    padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3b88f0; }
+  .btn-secondary { background: var(--surface3); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--surface2); }
+  .btn-danger { background: var(--red)22; color: var(--red); border: 1px solid var(--red)44; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-success { background: var(--green)22; color: var(--green); border: 1px solid var(--green)44; }
+
+  /* Stats Cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .stat-card .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .stat-card .stat-value { font-size: 26px; font-weight: 600; font-family: var(--mono); }
+  .stat-card .stat-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .stat-red .stat-value { color: var(--red); }
+  .stat-orange .stat-value { color: var(--orange); }
+  .stat-yellow .stat-value { color: var(--yellow); }
+  .stat-green .stat-value { color: var(--green); }
+  .stat-blue .stat-value { color: var(--accent); }
+
+  /* Table */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .table-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .table-title { font-size: 13px; font-weight: 600; flex: 1; min-width: 120px; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 9px 12px; text-align: left;
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 12px; font-size: 13px;
+    border-bottom: 1px solid var(--border)88;
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2)88; }
+  .code { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .lot { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-red { background: var(--red)22; color: var(--red); border: 1px solid var(--red)33; }
+  .badge-orange { background: var(--orange)22; color: var(--orange); border: 1px solid var(--orange)33; }
+  .badge-yellow { background: var(--yellow)22; color: var(--yellow); border: 1px solid var(--yellow)33; }
+  .badge-green { background: var(--green)22; color: var(--green); border: 1px solid var(--green)33; }
+  .badge-blue { background: var(--accent)22; color: var(--accent); border: 1px solid var(--accent)33; }
+  .badge-gray { background: var(--surface3); color: var(--text3); }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; }
+  .form-control {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 8px 10px;
+    font-family: var(--font); font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+    width: 100%;
+  }
+  .form-control:focus { border-color: var(--accent); }
+  .form-control option { background: var(--surface2); }
+  select.form-control { cursor: pointer; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: #00000088; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; width: 100%; max-width: 700px;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-header {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-header h3 { font-size: 15px; font-weight: 600; }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .close-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; }
+  .close-btn:hover { background: var(--surface3); color: var(--text); }
+
+  /* Filters */
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .search-input { position: relative; }
+  .search-input input { padding-left: 30px; min-width: 180px; }
+  .search-input::before { content: '🔍'; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 12px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab-btn {
+    padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500;
+    color: var(--text3); border: none; background: none;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Unit conversion hint */
+  .convert-hint {
+    background: var(--accent)11; border: 1px solid var(--accent)33;
+    border-radius: 6px; padding: 10px 12px; font-size: 12px;
+    color: var(--text2); margin-top: 8px;
+  }
+
+  /* Expiry bar */
+  .exp-bar { height: 4px; border-radius: 2px; background: var(--surface3); overflow: hidden; margin-top: 4px; }
+  .exp-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 48px; color: var(--text3); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; transform: translateY(80px); opacity: 0;
+    transition: all 0.25s; max-width: 320px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+
+  /* Summary grouped by product */
+  .product-summary { background: var(--surface2); border-radius: 8px; padding: 14px; margin-bottom: 8px; }
+  .product-summary-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; cursor: pointer; }
+  .ps-code { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent)15; padding: 2px 7px; border-radius: 4px; }
+  .ps-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .ps-total { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+  .lot-table { font-size: 12px; }
+  .lot-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--border)55; }
+  .lot-row .lot-no { font-family: var(--mono); color: var(--text3); min-width: 130px; }
+  .lot-row .lot-qty { font-family: var(--mono); font-weight: 600; min-width: 60px; text-align: right; }
+  .lot-row .lot-exp { flex: 1; font-size: 11px; color: var(--text3); }
+
+  .scrollable { max-height: 60vh; overflow-y: auto; }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* Info row */
+  .info-row { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .info-row .lbl { font-size: 11px; color: var(--text3); }
+  .info-row .val { font-size: 13px; }
+
+  /* ===== MOBILE RESPONSIVE ===== */
+  .hamburger {
+    display: none;
+    background: none; border: none; color: var(--text);
+    font-size: 22px; cursor: pointer; padding: 4px 8px;
+    line-height: 1;
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed; inset: 0; background: #00000066;
+    z-index: 99;
+  }
+  .sidebar-overlay.show { display: block; }
+
+  @media (max-width: 700px) {
+    .hamburger { display: block; }
+
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0;
+      z-index: 100; width: 260px; min-width: 260px;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 20px #0008;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    .main { width: 100%; }
+
+    .topbar { padding: 10px 14px; gap: 8px; }
+    .topbar h2 { font-size: 14px; }
+
+    .content { padding: 12px 14px; }
+
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-card { padding: 12px; }
+    .stat-card .stat-value { font-size: 22px; }
+
+    .form-grid { grid-template-columns: 1fr !important; }
+    .form-group[style*="grid-column"] { grid-column: auto !important; }
+
+    table { font-size: 12px; }
+    th, td { padding: 7px 8px; }
+
+    /* Summary grid single col on mobile */
+    #summary-body > div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+
+    .filter-bar { flex-direction: column; align-items: stretch; }
+    .filter-bar select, .filter-bar input { min-width: unset !important; width: 100%; }
+    .search-input { width: 100%; }
+    .search-input input { width: 100%; }
+
+    /* Stack two-column layouts */
+    div[style*="grid-template-columns:1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+    div[style*="display:grid;grid-template-columns:1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+
+    .modal { max-width: 100%; margin: 0 10px; }
+    .modal-body { padding: 14px; }
+
+    .topbar-actions .btn { font-size: 12px; padding: 6px 10px; }
+  }
+
+
+  .two-col-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 700px) {
+    .two-col-grid { grid-template-columns: 1fr; }
+  }
+
+
+  /* Sync bar */
+  .sync-bar {
+    background: var(--green)11; border-bottom: 1px solid var(--green)33;
+    padding: 6px 24px; font-size: 11px; color: var(--green);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .sync-bar.hidden { display: none !important; }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>📦 AIthai Stock</h1>
+      <p>ระบบสต็อกร่วม | Multi-user Shared</p>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">ภาพรวม</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">สินค้าคงเหลือ</div>
+      <div class="nav-item" onclick="showPage('balance')"><span class="icon">📋</span> สต็อกคงเหลือ (Lot)</div>
+      <div class="nav-item" onclick="showPage('summary')"><span class="icon">🗂️</span> สรุปรายสินค้า</div>
+      <div class="nav-item" onclick="showPage('expiry')"><span class="icon">⏰</span> ติดตามวันหมดอายุ</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">การเคลื่อนไหว</div>
+      <div class="nav-item" onclick="showPage('movement-in')"><span class="icon">📥</span> รับสินค้าเข้า (IN)</div>
+      <div class="nav-item" onclick="showPage('movement-out')"><span class="icon">📤</span> ตัดสินค้าออก (OUT)</div>
+      <div class="nav-item" onclick="showPage('movement-log')"><span class="icon">📜</span> ประวัติการเคลื่อนไหว</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">ข้อมูลหลัก</div>
+      <div class="nav-item" onclick="showPage('products')"><span class="icon">🏷️</span> Product Master</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">ตั้งค่าระบบ</div>
+      <div class="nav-item" onclick="showPage('settings-customers')"><span class="icon">🏥</span> จัดการ Customer</div>
+      <div class="nav-item" onclick="showPage('settings-staff')"><span class="icon">👤</span> จัดการ Staff</div>
+      <div class="nav-item" onclick="showPage('settings-dropdowns')"><span class="icon">⚙️</span> Brand / Location / อื่นๆ</div>
+    </div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="sync-bar hidden" id="sync-bar">💾 <span id="sync-msg">บันทึกข้อมูลแล้ว</span></div>
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" id="hamburger-btn">☰</button>
+      <h2 id="page-title">Dashboard</h2>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+    <div class="content" id="main-content"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" style="display:none" onclick="closeModal(event)">
+  <div class="modal" id="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modal-title"></h3>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+const INIT_DATA = {"brands":["ARSCI (Cannada)","ARSCI (China)","IVF Co.","IVF Prime","Ellios","Match","ARCKTECK","Metiec"],"prod_codes":["H-3001","H-3002","H-3003","H-3501","H-3502","H-3503","I-3001","I-3501","I-30NP","I-35NP","B-30FP01","B-30FP02","B-30FP03","B-30FP04","B-30FP05","PB-30FP01","B-35FP01","B-35FP02","B-35FP03","B-30BP01","B-35BP01","D-130","D-140","D-160","D-190","RC-1021","RC-1050","RC-1060","RC-1060-1","RC-1070-1","RC-F","RC-G-40","RC-G-80","RC-O-100","RC-P","RC-P-150mm","RC-S","RC-T","RC-T-1","RC-V-5","RC-V-1","JY-1110","Jy-S-R","Jy-S-G","Jy-S-B","Jy-S-Y","TP-1200","co-001","co-002","co-003","co-004","ec-001","WT-01","WT-02","WT-03","WT-04","DI-001","DI-002","DI-003","DI-004","DI-005","GP-001","GP-002","GP-003","GP-004","GP-005","GP-006","GP-007","GP-008","GP-009","GP-010","GP-011","GP-012","GP-013","GP-014","GP-015","GP-016","GP-017","GP-018","SP-001","SP-002","SP-003","SP-004","SP-005","SP-006","SP-007","SP-008","SP-009","SP-010","SP-011","SP-012","SP-013","SP-014","SP-015","SP-016","180020","180040","180050","RCS-B","RCS-G","RCS-O","RCS-P","RCS-Y","I3001S"],"prod_names":["Holding pipette with 30\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Holding pipette with 30\u00b0 angle, standard O.D. 100-110 \u03bcm, I.D. 20 \u03bcm","Holding pipette with 30\u00b0 angle, standard O.D. 120-130 \u03bcm, I.D. 20 \u03bcm","Holding pipette with 35\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Holding pipette with 35\u00b0 angle, standard O.D. 100-110 \u03bcm, I.D. 20 \u03bcm","Holding pipette with 35\u00b0 angle, standard O.D. 120-130 \u03bcm, I.D. 20 \u03bcm","Injection pipette with 30\u00b0 angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5","Injection pipette with 35\u00b0 angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5","Injection pipette with 30\u00b0 angle, O.D. 5.0-7.5, I.D. 4.5-5.5","Injection pipette with 35\u00b0 angle, O.D. 5.0-7.5, I.D. 4.5-5.5","30\u00b0 angle, flat and polished, I.D. 32.5-37.5 \u03bcm","30\u00b0 angle, flat and polished, I.D. 27.5-32.5 \u03bcm","30\u00b0 angle, flat and polished, I.D. 22.5-27.5 \u03bcm","30\u00b0 angle, flat and polished, I.D. 17.5-22.5 \u03bcm","30\u00b0 angle, flat and polished, I.D. 15.0-17.5 \u03bcm","30\u00b0 angle, flat and polished, I.D. 37.5-42.5 \u03bcm","35\u00b0 angle, flat and polished, I.D. 32.5-37.5 \u03bcm","35\u00b0 angle, flat and polished, I.D. 27.5-32.5 \u03bcm","35\u00b0 angle, flat and polished, I.D. 37.5-42.5 \u03bcm"],"categories":["Micropipette","Cryopresevation","Accessory","IVF Media","Sperm Media","Needle","Catheter","Disinfectant","Wipes","Other"],"units":["Pcs.","Box","Bottle","Unit","Set","Pack"],"suppliers":["ARSCI","IVF Co.","IVF Prime","Ellios"],"locations":["Main Stock","Cold Room","Stock Room","Returned Stock","Expired"],"staff_list":["Thicha","Tossapol","Kanticha","Nootjira"],"customers":["ARSCI","Neslihan \u00dcrkmez","Bio-match Tech Limited","IVF Prime","Deep & Harmonicare IVF Center (Thailand) Co., Ltd.","BIC - Bangkok IVF Clinic","EKI IVF","REP IVF Clinic","DBN Infertility Clinic","\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d\u0e27\u0e34\u0e08\u0e31\u0e22\u0e17\u0e32\u0e07\u0e27\u0e34\u0e17\u0e22\u0e32\u0e28\u0e32\u0e2a\u0e15\u0e23\u0e4c\u0e01\u0e32\u0e23\u0e41\u0e1e\u0e17\u0e22\u0e4c \u0e04\u0e13\u0e30\u0e41\u0e1e\u0e17\u0e22\u0e28\u0e32\u0e2a\u0e15\u0e23\u0e4c \u0e21\u0e2b\u0e32\u0e27\u0e34\u0e17\u0e22\u0e32\u0e25\u0e31\u0e22\u0e40\u0e0a\u0e35\u0e22\u0e07\u0e43\u0e2b\u0e21\u0e48","Worldwide Fertility Center","\u0e42\u0e23\u0e07\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25\u0e18\u0e19\u0e1a\u0e38\u0e23\u0e35\u0e1a\u0e33\u0e23\u0e38\u0e07\u0e40\u0e21\u0e37\u0e2d\u0e07","\u0e40\u0e21\u0e42\u0e01\u0e30\u0e1e\u0e23\u0e30\u0e23\u0e32\u0e21 2 \u0e2a\u0e2b\u0e04\u0e25\u0e34\u0e19\u0e34\u0e01","\u0e1a\u0e23\u0e34\u0e29\u0e31\u0e17 \u0e27\u0e31\u0e19 \u0e44\u0e25\u0e1f\u0e4c \u0e23\u0e35\u0e42\u0e1b\u0e23\u0e14\u0e31\u0e01\u0e17\u0e35\u0e1f \u0e40\u0e0b\u0e47\u0e19\u0e40\u0e15\u0e2d\u0e23\u0e4c \u0e08\u0e33\u0e01\u0e31\u0e14","\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e23\u0e31\u0e01\u0e29\u0e32\u0e1c\u0e39\u0e49\u0e21\u0e35\u0e1a\u0e38\u0e15\u0e23\u0e22\u0e32\u0e01\u0e08\u0e34\u0e19\u0e15\u0e1a\u0e38\u0e15\u0e23","\u0e42\u0e23\u0e07\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25\u0e1e\u0e23\u0e30\u0e21\u0e07\u0e01\u0e38\u0e8e\u0e40\u0e01\u0e49\u0e32","\u0e42\u0e23\u0e07\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25\u0e23\u0e32\u0e0a\u0e27\u0e34\u0e16\u0e35","\u0e1a\u0e23\u0e34\u0e29\u0e31\u0e17 \u0e28\u0e39\u0e19\u0e22\u0e4c\u0e2a\u0e38\u0e02\u0e20\u0e32\u0e1e\u0e42\u0e04\u0e23\u0e32\u0e0a \u0e08\u0e33\u0e01\u0e31\u0e14","\u0e1a\u0e23\u0e34\u0e29\u0e31\u0e17 \u0e40\u0e0b\u0e1f \u0e40\u0e1f\u0e2d\u0e23\u0e4c\u0e17\u0e34\u0e25\u0e34\u0e15\u0e35\u0e49 \u0e01\u0e23\u0e38\u0e4a\u0e1b \u0e08\u0e33\u0e01\u0e31\u0e14(\u0e21\u0e2b\u0e32\u0e0a\u0e19)"],"product_master":[{"Brand":"ARSCI (Cannada)","Product Code":"I-3001","Product Name":"Injection pipette with 30\u00b0 angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"I-3001","Product Name":"Injection pipette with 30\u00b0 angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"I-3501","Product Name":"Injection pipette with 35\u00b0 angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"I-3501","Product Name":"Injection pipette with 35\u00b0 angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"I-30NP","Product Name":"Injection pipette with 30\u00b0 angle, O.D. 5.0-7.5, I.D. 4.5-5.5","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"I-35NP","Product Name":"Injection pipette with 35\u00b0 angle, O.D. 5.0-7.5, I.D. 4.5-5.5","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"H-3001","Product Name":"Holding pipette with 30\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"H-3001","Product Name":"Holding pipette with 30\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"H-3002","Product Name":"Holding pipette with 30\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"H-3003","Product Name":"Holding pipette with 30\u00b0 angle, standard O.D. 120-130 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"H-3501","Product Name":"Holding pipette with 35\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"H-3501","Product Name":"Holding pipette with 35\u00b0 angle, standard O.D. 110-120 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"H-3502","Product Name":"Holding pipette with 35\u00b0 angle, standard O.D. 100-110 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"H-3503","Product Name":"Holding pipette with 35\u00b0 angle, standard O.D. 120-130 \u03bcm, I.D. 20 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-30FP01","Product Name":"30\u00b0 angle, flat and polished, I.D. 32.5-37.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-30FP02","Product Name":"30\u00b0 angle, flat and polished, I.D. 27.5-32.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-30FP03","Product Name":"30\u00b0 angle, flat and polished, I.D. 22.5-27.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"B-30FP03","Product Name":"30\u00b0 angle, flat and polished, I.D. 22.5-27.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-30FP04","Product Name":"30\u00b0 angle, flat and polished, I.D. 17.5-22.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-30FP05","Product Name":"30\u00b0 angle, flat and polished, I.D. 15.0-17.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"PB-30FP01","Product Name":"30\u00b0 angle, flat and polished, I.D. 37.5-42.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-35FP01","Product Name":"35\u00b0 angle, flat and polished, I.D. 32.5-37.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-35FP02","Product Name":"35\u00b0 angle, flat and polished, I.D. 27.5-32.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-35FP03","Product Name":"35\u00b0 angle, flat and polished, I.D. 37.5-42.5 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-30BP01","Product Name":"Biopsy pipette with 30\u00b0, O.D. 15 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"B-35BP01","Product Name":"Biopsy pipette with 35\u00b0, O.D. 15 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"D-130","Product Name":"Denuding pipette I.D. 130 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"D-140","Product Name":"Denuding pipette I.D. 140 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"D-160","Product Name":"Denuding pipette I.D. 160 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (Cannada)","Product Code":"D-190","Product Name":"Denuding pipette I.D. 190 \u03bcm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":10,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-1021","Product Name":"Sperm Washing Medium, RC-1021, 100ml","Category":"Sperm Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-1050","Product Name":"Embro Development Medium, RC-1050, 4*5ml","Category":"IVF Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-1060","Product Name":"Oocyte Maturation Medium, RC-1060, 50ml","Category":"IVF Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-1060-1","Product Name":"Oocyte Maturation Medium, RC-1060, 5*10 ml","Category":"IVF Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-1070-1","Product Name":"Embro Transfer Medium, RC-1070, 10ml","Category":"IVF Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-F","Product Name":"Sperm Freezing Medium 4*10ml","Category":"Cryopresevation","Unit":"Box","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-G-40","Product Name":"Sperm Gradient RC-G-40, 50 ml","Category":"Sperm Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-G-80","Product Name":"Sperm Gradient RC-G-80， 50 ml","Category":"Sperm Media","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-O-100","Product Name":"Oil for culture (Overlay-O) 100 ml","Category":"Other","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-P","Product Name":"Pasteur Pipette","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-P-150mm","Product Name":"Pasteur Pipette 150mm","Category":"Micropipette","Unit":"Pcs.","Min Stock":50,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-S","Product Name":"Supplement for OMM","Category":"IVF Media","Unit":"Box","Min Stock":1,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-T","Product Name":"RC Thawing Kit1*4*5ml","Category":"Cryopresevation","Unit":"Box","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-T-1","Product Name":"RC One-Step warmimg Solution","Category":"Cryopresevation","Unit":"Bottle","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-V-5","Product Name":"RC Fast Vitrifcation Kit 2*2*5ml","Category":"Cryopresevation","Unit":"Box","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"RC-V-1","Product Name":"Rc Fast Vitrifcation Kits 2*2*1ml","Category":"Cryopresevation","Unit":"Box","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null},{"Brand":"ARSCI (China)","Product Code":"JY-1110","Product Name":"Hyaluronidase Solution 4*1ml, JY-1110","Category":"IVF Media","Unit":"Box","Min Stock":3,"Pcs per Box":0,"Supplier":"ARSCI","Remark":null}],"stock_balance":[{"Brand": "ARCKTECK", "Product Code": "00082", "Product Name": "1000  ulTips", "Lot No.": "", "Expiry Date": "2028-04-30", "Location": "Stock Room", "Initial Qty": 1000.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1000.0, "Min Stock": 0.0, "Unit": "Pcs.", "Pcs/Box": 1.0, "Balance (Pcs)": 1000.0}, {"Brand": "ARCKTECK", "Product Code": "14400902", "Product Name": "14 ml Round-Bottom Tube", "Lot No.": "", "Expiry Date": "2026-04-30", "Location": "Stock Room", "Initial Qty": 504.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 504.0, "Min Stock": 0.0, "Unit": "Pcs.", "Pcs/Box": 1.0, "Balance (Pcs)": 504.0}, {"Brand": "ARCKTECK", "Product Code": "35CD1122", "Product Name": "35 mm Culture Dish (5pcs./pack)", "Lot No.": "", "Expiry Date": "2026-10-31", "Location": "Stock Room", "Initial Qty": 100.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 100.0, "Min Stock": 0.0, "Unit": "Pack", "Pcs/Box": 1.0, "Balance (Pcs)": 100.0}, {"Brand": "ARCKTECK", "Product Code": "4WD40523", "Product Name": "4 Well Dish", "Lot No.": "", "Expiry Date": "2026-05-31", "Location": "Stock Room", "Initial Qty": 400.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 400.0, "Min Stock": 0.0, "Unit": "Pcs.", "Pcs/Box": 1.0, "Balance (Pcs)": 400.0}, {"Brand": "ARCKTECK", "Product Code": "90CD1122", "Product Name": "90mm Culture Dish (5pcs./pack)", "Lot No.": "", "Expiry Date": "2026-04-30", "Location": "Stock Room", "Initial Qty": 66.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 66.0, "Min Stock": 0.0, "Unit": "Pack", "Pcs/Box": 1.0, "Balance (Pcs)": 66.0}, {"Brand": "ARCKTECK", "Product Code": "ID400223", "Product Name": "ICSI Dish", "Lot No.": "", "Expiry Date": "2026-04-30", "Location": "Stock Room", "Initial Qty": 500.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 500.0, "Min Stock": 0.0, "Unit": "Pcs.", "Pcs/Box": 1.0, "Balance (Pcs)": 500.0}, {"Brand": "ARCKTECK", "Product Code": "SC400531", "Product Name": "Sample Container 100ml.", "Lot No.": "", "Expiry Date": "2027-05-31", "Location": "Stock Room", "Initial Qty": 745.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 745.0, "Min Stock": 0.0, "Unit": "Pcs.", "Pcs/Box": 1.0, "Balance (Pcs)": 745.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "B-30FP01", "Product Name": "30° angle, flat and polished, I.D. 32.5-37.5 μm", "Lot No.": "LOT-B30FP011901", "Expiry Date": "2022-04-22", "Location": "Expired", "Initial Qty": 54.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 54.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 54.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "B-30FP01", "Product Name": "30° angle, flat and polished, I.D. 32.5-37.5 μm", "Lot No.": "LOT-B30FP012202", "Expiry Date": "2028-08-31", "Location": "Main Stock", "Initial Qty": 93.0, "IN": 0, "OUT": 3.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 90.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 90.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "B-30FP02", "Product Name": "30° angle, flat and polished, I.D. 27.5-32.5 μm", "Lot No.": "LOT-B30FP021904", "Expiry Date": "2022-04-22", "Location": "Expired", "Initial Qty": 97.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 97.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 97.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "B-30FP03", "Product Name": "30° angle, flat and polished, I.D. 22.5-27.5 μm", "Lot No.": "LOT-B30FP032202", "Expiry Date": "2026-08-31", "Location": "Main Stock", "Initial Qty": 27.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 27.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 27.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "B-30FP04", "Product Name": "30° angle, flat and polished, I.D. 17.5-22.5 μm", "Lot No.": "LOT-B30FP042202", "Expiry Date": "2026-08-31", "Location": "Main Stock", "Initial Qty": 107.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 107.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 107.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "B-30FP05", "Product Name": "30° angle, flat and polished, I.D. 15.0-17.5 μm", "Lot No.": "LOT-B30FP052202", "Expiry Date": "2026-08-31", "Location": "Main Stock", "Initial Qty": 131.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 131.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 131.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "D-190", "Product Name": "Denuding pipette I.D. 190 μm", "Lot No.": "LOT-D1902301", "Expiry Date": "2026-05-31", "Location": "Expired", "Initial Qty": 16.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 16.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 50.0, "Balance (Pcs)": 16.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "D-190", "Product Name": "Denuding pipette I.D. 190 μm", "Lot No.": "LOT-D1902304", "Expiry Date": "2028-01-31", "Location": "Stock Room", "Initial Qty": 130.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 130.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 50.0, "Balance (Pcs)": 130.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "H-3001", "Product Name": "Holding pipette with 30° angle, standard O.D. 110-120 μm, I.D. 20 μm", "Lot No.": "LOT-H30012404", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "H-3003", "Product Name": "Holding pipette with 30° angle, standard O.D. 120-130 μm, I.D. 20 μm", "Lot No.": "LOT-H30032404", "Expiry Date": "2028-01-01", "Location": "Main Stock", "Initial Qty": 53.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 53.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 53.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "H-3501", "Product Name": "Holding pipette with 35° angle, standard O.D. 110-120 μm, I.D. 20 μm", "Lot No.": "LOT-H35012201", "Expiry Date": "2028-01-01", "Location": "Main Stock", "Initial Qty": 148.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 148.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 148.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "I-3001", "Product Name": "Injection pipette with 30° angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5", "Lot No.": "LOT-130012101", "Expiry Date": "2028-02-29", "Location": "Main Stock", "Initial Qty": 68.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 68.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 68.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "I-3001", "Product Name": "Injection pipette with 30° angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5", "Lot No.": "LOT-I30011901", "Expiry Date": "2022-04-22", "Location": "Expired", "Initial Qty": 90.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 90.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 90.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "I-3001", "Product Name": "Injection pipette with 30° angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5", "Lot No.": "LOT-I30011902", "Expiry Date": "2022-04-23", "Location": "Expired", "Initial Qty": 7.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 7.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 7.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "I-30NP", "Product Name": "Injection pipette with 30° angle, O.D. 5.0-7.5, I.D. 4.5-5.5", "Lot No.": "LOT-I30NP1902", "Expiry Date": "2022-04-22", "Location": "Expired", "Initial Qty": 6.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 6.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 6.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "Jy-S-B", "Product Name": "Straw Blue", "Lot No.": "LOT-JYS-B2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Initial Qty": 37.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 37.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 37.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "Jy-S-G", "Product Name": "Straw Green", "Lot No.": "LOT-JYS-G2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Initial Qty": 83.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 83.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 83.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "Jy-S-R", "Product Name": "Straw Red", "Lot No.": "LOT-JYS-R2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Initial Qty": 25.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 25.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 25.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "Jy-S-Y", "Product Name": "Straw Yellow", "Lot No.": "LOT-LYS-Y2303", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 84.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 84.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 84.0}, {"Brand": "ARSCI (Cannada)", "Product Code": "TP-1200", "Product Name": "TP-1200", "Lot No.": "LOT-TP2202", "Expiry Date": "2026-08-31", "Location": "Stock Room", "Initial Qty": 12.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 12.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 12.0}, {"Brand": "ARSCI (China)", "Product Code": "40002009", "Product Name": "40002009", "Lot No.": "LOT-4WC0108D", "Expiry Date": "2026-08-31", "Location": "Stock Room", "Initial Qty": 0, "IN": 24.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 24.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 24.0}, {"Brand": "ARSCI (China)", "Product Code": "40002013", "Product Name": "40002013", "Lot No.": "LOT-CW402301", "Expiry Date": "2026-12-31", "Location": "Stock Room", "Initial Qty": 0, "IN": 3.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 3.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 3.0}, {"Brand": "ARSCI (China)", "Product Code": "40002014", "Product Name": "40002014", "Lot No.": "LOT-CD400123", "Expiry Date": "31/04/2026", "Location": "Stock Room", "Initial Qty": 0, "IN": 12.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 12.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 12.0}, {"Brand": "ARSCI (China)", "Product Code": "B-30FP02", "Product Name": "B-30FP02", "Lot No.": "LOT-2411004", "Expiry Date": "2028-02-29", "Location": "Main Stock", "Initial Qty": 0, "IN": 2.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (China)", "Product Code": "B-30FP03", "Product Name": "30° angle, flat and polished, I.D. 22.5-27.5 μm", "Lot No.": "LOT-20251208", "Expiry Date": "31/11/2028", "Location": "Main Stock", "Initial Qty": 0, "IN": 20.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 20.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 20.0}, {"Brand": "ARSCI (China)", "Product Code": "B-30FP03", "Product Name": "30° angle, flat and polished, I.D. 22.5-27.5 μm", "Lot No.": "LOT-2402004", "Expiry Date": "2027-04-30", "Location": "Main Stock", "Initial Qty": 30.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 30.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 30.0}, {"Brand": "ARSCI (China)", "Product Code": "D-140", "Product Name": "Denuding pipette I.D. 140 μm", "Lot No.": "LOT-2308002", "Expiry Date": "2026-09-30", "Location": "Stock Room", "Initial Qty": 4.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 4.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 4.0}, {"Brand": "ARSCI (China)", "Product Code": "D-160", "Product Name": "Denuding pipette I.D. 160 μm", "Lot No.": "LOT-2402004", "Expiry Date": "2027-04-30", "Location": "Stock Room", "Initial Qty": 39.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 39.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 39.0}, {"Brand": "ARSCI (China)", "Product Code": "D-190", "Product Name": "Denuding pipette I.D. 190 μm", "Lot No.": "LOT-D1902304", "Expiry Date": "2028-01-31", "Location": "Stock Room", "Initial Qty": 0, "IN": 1.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 1.0}, {"Brand": "ARSCI (China)", "Product Code": "H-3001", "Product Name": "Holding pipette with 30° angle, standard O.D. 110-120 μm, I.D. 20 μm", "Lot No.": "LOT-2510001", "Expiry Date": "2028-12-31", "Location": "Main Stock", "Initial Qty": 0, "IN": 1000.0, "OUT": 250.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 750.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 750.0}, {"Brand": "ARSCI (China)", "Product Code": "H-3501", "Product Name": "Holding pipette with 35° angle, standard O.D. 110-120 μm, I.D. 20 μm", "Lot No.": "LOT-2406001", "Expiry Date": "2027-08-31", "Location": "Main Stock", "Initial Qty": 100.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 100.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 100.0}, {"Brand": "ARSCI (China)", "Product Code": "H-3502", "Product Name": "Holding pipette with 35° angle, standard O.D. 100-110 μm, I.D. 20 μm", "Lot No.": "LOT-L2406001", "Expiry Date": "2027-08-31", "Location": "Main Stock", "Initial Qty": 42.0, "IN": 0, "OUT": 25.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 17.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 17.0}, {"Brand": "ARSCI (China)", "Product Code": "I-3001", "Product Name": "Injection pipette with 30° angle, with spike, O.D. 5.0-7.5, I.D. 4.5-5.5", "Lot No.": "LOT-2411004", "Expiry Date": "2028-02-29", "Location": "Main Stock", "Initial Qty": 39.0, "IN": 0, "OUT": 3.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 36.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 10.0, "Balance (Pcs)": 36.0}, {"Brand": "ARSCI (China)", "Product Code": "JY-1110", "Product Name": "Hyaluronidase Solution 4*1ml, JY-1110", "Lot No.": "LOT20260404", "Expiry Date": "2027-04-13", "Location": "Cold Room", "Initial Qty": 4.0, "IN": 0, "OUT": 4.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 0.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 4.0, "Balance (Pcs)": 0.0}, {"Brand": "ARSCI (China)", "Product Code": "Jy-S-G", "Product Name": "Jy-S-G", "Lot No.": "LOT-JYS-G2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Initial Qty": 0, "IN": 0, "OUT": 31.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": -31.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": -31.0}, {"Brand": "ARSCI (China)", "Product Code": "Jy-S-R", "Product Name": "Jy-S-R", "Lot No.": "LOT-JYS-R2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Initial Qty": 0, "IN": 0, "OUT": 16.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": -16.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": -16.0}, {"Brand": "ARSCI (China)", "Product Code": "Jy-S-Y", "Product Name": "Jy-S-Y", "Lot No.": "LOT-LYS-Y2303", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 0, "IN": 0, "OUT": 31.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": -31.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": -31.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1010", "Product Name": "Follicle Flushing Medium， RC-1011，100ml", "Lot No.": "LOT-20260502", "Expiry Date": "2026-11-05", "Location": "Cold Room", "Initial Qty": 0, "IN": 1.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 1.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1021", "Product Name": "Sperm Washing Medium, RC-1021, 100ml", "Lot No.": "LOT-2509002", "Expiry Date": "2026-09-03", "Location": "Cold Room", "Initial Qty": 1.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 1.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1050", "Product Name": "Embro Development Medium, RC-1050, 4*5ml", "Lot No.": "LOT-2507002", "Expiry Date": "2026-07-23", "Location": "Cold Room", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 4.0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1060", "Product Name": "Oocyte Maturation Medium, RC-1060, 50ml", "Lot No.": "LOT-20240603", "Expiry Date": "2025-06-22", "Location": "Expired", "Initial Qty": 1.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 1.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1060", "Product Name": "Oocyte Maturation Medium, RC-1060, 50ml", "Lot No.": "LOT-2406002", "Expiry Date": "2025-03-20", "Location": "Expired", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1060", "Product Name": "Oocyte Maturation Medium, RC-1060, 50ml", "Lot No.": "LOT-2511001", "Expiry Date": "2026-11-05", "Location": "Cold Room", "Initial Qty": 3.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 3.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 3.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "Oocyte Maturation Medium, RC-1060, 5*10 ml", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Initial Qty": 40.0, "IN": 95.0, "OUT": 73.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 62.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 5.0, "Balance (Pcs)": 62.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "Oocyte Maturation Medium, RC-1060, 5*10 ml", "Lot No.": "LOT-2504002", "Expiry Date": "2025-10-21", "Location": "Expired", "Initial Qty": 3.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 3.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 5.0, "Balance (Pcs)": 3.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "Oocyte Maturation Medium, RC-1060, 5*10 ml", "Lot No.": "LOT-2506002", "Expiry Date": "2025-10-21", "Location": "Expired", "Initial Qty": 1.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 5.0, "Balance (Pcs)": 1.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "Embro Transfer Medium, RC-1070,", "Lot No.": "LOT-20260304", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Initial Qty": 5.0, "IN": 0, "OUT": 4.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 5.0, "Balance (Pcs)": 1.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "Embro Transfer Medium, RC-1070,", "Lot No.": "LOT-20260502", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Initial Qty": 18.0, "IN": 25.0, "OUT": 16.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 27.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 5.0, "Balance (Pcs)": 27.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-F", "Product Name": "Sperm Freezing Medium 4*10ml", "Lot No.": "LOT-01901", "Expiry Date": "2022-04-30", "Location": "Expired", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 4.0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-G-40", "Product Name": "Sperm Gradient RC-G-40, 50 ml", "Lot No.": "LOT-20250803", "Expiry Date": "2026-05-05", "Location": "Cold Room", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-G-80", "Product Name": "Sperm Gradient RC-G-80， 50 ml", "Lot No.": "LOT-20250803", "Expiry Date": "2026-05-05", "Location": "Cold Room", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 2.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-H", "Product Name": "Holder Stainless", "Lot No.": "", "Expiry Date": null, "Location": "Main Stock", "Initial Qty": 37.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 37.0, "Min Stock": 7.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 37.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "Oil for culture (Overlay-O) 100 ml", "Lot No.": "LOT-20260101", "Expiry Date": "2028-03-31", "Location": "Cold Room", "Initial Qty": 0, "IN": 100.0, "OUT": 10.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 90.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 90.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "Oil for culture (Overlay-O) 100 ml", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Initial Qty": 31.0, "IN": 0, "OUT": 22.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 9.0, "Min Stock": 3.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 9.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-P-150mm", "Product Name": "Pasteur Pipette 150mm", "Lot No.": "LOT-20231102", "Expiry Date": "2026-10-31", "Location": "Main Stock", "Initial Qty": 30.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 30.0, "Min Stock": 50.0, "Unit": "Pcs.", "Pcs/Box": 50.0, "Balance (Pcs)": 30.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S", "Product Name": "Supplement for OMM", "Lot No.": "LOT-250908", "Expiry Date": "2027-08-31", "Location": "Cold Room", "Initial Qty": 4.0, "IN": 40.0, "OUT": 3.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 41.0, "Min Stock": 1.0, "Unit": "Box", "Pcs/Box": 4.0, "Balance (Pcs)": 41.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-B", "Product Name": "RC Straw Blue", "Lot No.": "LOT-20231102", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 7.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 7.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 7.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-B", "Product Name": "RC Straw Blue", "Lot No.": "LOT-2312004", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 108.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 108.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 108.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-G", "Product Name": "RC Straw Green", "Lot No.": "LOT-20231102", "Expiry Date": "2026-10-31", "Location": "Main Stock", "Initial Qty": 7.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 7.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 7.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-G", "Product Name": "RC Straw Green", "Lot No.": "LOT-2312004", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 124.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 124.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 124.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-O", "Product Name": "RC Straw Orange", "Lot No.": "LOT-20231102", "Expiry Date": "2026-10-31", "Location": "Main Stock", "Initial Qty": 7.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 7.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 7.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-O", "Product Name": "RC Straw Orange", "Lot No.": "LOT-2312004", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 55.0, "IN": 47.0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 102.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 102.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-P", "Product Name": "RC Straw P", "Lot No.": "LOT-20231102", "Expiry Date": "2026-10-31", "Location": "Main Stock", "Initial Qty": 6.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 6.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 6.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-P", "Product Name": "RC Straw P", "Lot No.": "LOT-2312004", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 107.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 107.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 107.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-Y", "Product Name": "RC Straw Yellow", "Lot No.": "LOT-20231102", "Expiry Date": "2026-10-31", "Location": "Expired", "Initial Qty": 3.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 3.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 3.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-S-Y", "Product Name": "RC Straw Yellow", "Lot No.": "LOT-2312004", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Initial Qty": 55.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 55.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 50.0, "Balance (Pcs)": 55.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-T", "Product Name": "RC Thawing Kit1*4*5ml", "Lot No.": "LOT-2511004", "Expiry Date": "2026-11-20", "Location": "Cold Room", "Initial Qty": 5.0, "IN": 0, "OUT": 2.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 3.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 1.0, "Balance (Pcs)": 3.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC One-Step warmimg Solution", "Lot No.": "LOT-20260303", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Initial Qty": 3.0, "IN": 0, "OUT": 5.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": -2.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 5.0, "Balance (Pcs)": -2.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC One-Step warmimg Solution", "Lot No.": "LOT-20260501", "Expiry Date": "2026-11-20", "Location": "Cold Room", "Initial Qty": 10.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 10.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 5.0, "Balance (Pcs)": 10.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-V-1", "Product Name": "Rc Fast Vitrifcation Kits 2*2*1ml", "Lot No.": "LOT-2511003", "Expiry Date": "2026-11-17", "Location": "Cold Room", "Initial Qty": 18.0, "IN": 0, "OUT": 5.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 13.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 2.0, "Balance (Pcs)": 13.0}, {"Brand": "ARSCI (China)", "Product Code": "RC-V-5", "Product Name": "RC Fast Vitrifcation Kit 2*2*5ml", "Lot No.": "LOT-2511003", "Expiry Date": "2026-11-17", "Location": "Cold Room", "Initial Qty": 2.0, "IN": 0, "OUT": 2.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 0.0, "Min Stock": 3.0, "Unit": "Box", "Pcs/Box": 2.0, "Balance (Pcs)": 0.0}, {"Brand": "ARSCI (China)", "Product Code": "co-001", "Product Name": "co-001", "Lot No.": "LOT-CR824", "Expiry Date": "2027-08-30", "Location": "Stock Room", "Initial Qty": 12.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 12.0, "Min Stock": 0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 12.0}, {"Brand": "Ellios", "Product Code": "EBT00118-3P", "Product Name": "Set de transfert d'embryon - longueur utile 3 P,  18 cm", "Lot No.": "LOT-N004859", "Expiry Date": "2025-08-28", "Location": "Expired", "Initial Qty": 4.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 4.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 4.0}, {"Brand": "Ellios", "Product Code": "EBT00123-3P", "Product Name": "Set for difficult embryo transfer, 3 P, 23 cm", "Lot No.": "LOT-N009677", "Expiry Date": "2028-05-28", "Location": "Stock Room", "Initial Qty": 67.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 67.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 67.0}, {"Brand": "Ellios", "Product Code": "EBT00230S-R", "Product Name": "Follicle aspiration set with stopcock, 1,4 - 17 G - laser - back  cut - 30 cm", "Lot No.": "LOT-N006187", "Expiry Date": "2026-02-28", "Location": "Stock Room", "Initial Qty": 47.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 47.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 47.0}, {"Brand": "Ellios", "Product Code": "EBT018-EKT-NV", "Product Name": "ECHOCATH NV - Echogenic Curved Embryo transfer catheter", "Lot No.": "LOT-N010359", "Expiry Date": "2028-09-28", "Location": "Stock Room", "Initial Qty": 628.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 628.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 628.0}, {"Brand": "Ellios", "Product Code": "EBT023-ST-2P", "Product Name": "ELLIOSET-ST-2P", "Lot No.": "LOT-N004579", "Expiry Date": "2025-02-28", "Location": "Expired", "Initial Qty": 7.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 7.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 7.0}, {"Brand": "Ellios", "Product Code": "EBT023-ST-S", "Product Name": "ELLIOSET, Echogenic embryo transfer set", "Lot No.": "LOT-N004579", "Expiry Date": "2025-02-28", "Location": "Expired", "Initial Qty": 32.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 32.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 32.0}, {"Brand": "Ellios", "Product Code": "EBT023-ST-S-O", "Product Name": "ELLIOSET,Embroyo transfer set", "Lot No.": "LOT-N010828", "Expiry Date": "2028-10-28", "Location": "Stock Room", "Initial Qty": 42.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 42.0, "Min Stock": 10.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 42.0}, {"Brand": "IVF Co.", "Product Code": "co-002", "Product Name": "Vitrification Straw (Cryoteb) – Short Handle", "Lot No.": "LOT-CR0325", "Expiry Date": "2028-03-31", "Location": "Stock Room", "Initial Qty": 28.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 28.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 100.0, "Balance (Pcs)": 28.0}, {"Brand": "IVF Co.", "Product Code": "co-002", "Product Name": "Vitrification Straw (Cryoteb) – Short Handle", "Lot No.": "LOT-CR1024", "Expiry Date": "2024-10-31", "Location": "Stock Room", "Initial Qty": 197.0, "IN": 0, "OUT": 5.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 192.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 100.0, "Balance (Pcs)": 192.0}, {"Brand": "IVF Co.", "Product Code": "co-010", "Product Name": "Intrauterine insemination Catheter (Intrateb) – Mandreled", "Lot No.": "LOT-CT0824", "Expiry Date": "2027-08-30", "Location": "Stock Room", "Initial Qty": 15.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 15.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 100.0, "Balance (Pcs)": 15.0}, {"Brand": "IVF Prime", "Product Code": "ESD001", "Product Name": "Embryo Safe Incubator Disinfectant 1L", "Lot No.": "LOT-2025/03ESD", "Expiry Date": "2027-03-31", "Location": "Stock Room", "Initial Qty": 21.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 21.0, "Min Stock": 20.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 21.0}, {"Brand": "IVF Prime", "Product Code": "ESD002", "Product Name": "Embryo Safe Incubator Disinfectant 1L", "Lot No.": "LOT-2025/03ESD", "Expiry Date": "2027-03-31", "Location": "Stock Room", "Initial Qty": 31.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 31.0, "Min Stock": 20.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 31.0}, {"Brand": "IVF Prime", "Product Code": "ESD003", "Product Name": "1 cardboard box of Embryo Safe Incubator Disinfection Wipes (including 360 wipes)", "Lot No.": "LOT-202309/2025", "Expiry Date": "2025-09-30", "Location": "Expired", "Initial Qty": 58.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 58.0, "Min Stock": 2.0, "Unit": "Box", "Pcs/Box": 1.0, "Balance (Pcs)": 58.0}, {"Brand": "IVF Prime", "Product Code": "ESHD001", "Product Name": "Embryo Safe Hand Disinfectant 1L", "Lot No.": "LOT-2025/03ESHD", "Expiry Date": "2027-03-31", "Location": "Stock Room", "Initial Qty": 23.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 23.0, "Min Stock": 20.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 23.0}, {"Brand": "IVF Prime", "Product Code": "ESHD002", "Product Name": "Embryo Safe Hand Disinfectant 1L", "Lot No.": "LOT-2025/03ESHD", "Expiry Date": "2027-03-31", "Location": "Stock Room", "Initial Qty": 22.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 22.0, "Min Stock": 20.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 22.0}, {"Brand": "IVF Prime", "Product Code": "ESHD003", "Product Name": "1 cardboard box of Embryo Safe Hand Disinfection Wipes (including 360 wipes)", "Lot No.": "LOT-2023/09ESHW", "Expiry Date": "2023-09-30", "Location": "Expired", "Initial Qty": 60.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 60.0, "Min Stock": 2.0, "Unit": "Box", "Pcs/Box": 1.0, "Balance (Pcs)": 60.0}, {"Brand": "IVF Prime", "Product Code": "ESSF005", "Product Name": "Embryo Safe Floor Disinfectant 5L", "Lot No.": "LOT-2025/03ESSF", "Expiry Date": "2027-03-31", "Location": "Stock Room", "Initial Qty": 6.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 6.0, "Min Stock": 20.0, "Unit": "Bottle", "Pcs/Box": 1.0, "Balance (Pcs)": 6.0}, {"Brand": "Match", "Product Code": "140000", "Product Name": "TAPE Compatible Cartridge (Black Matt Silver)", "Lot No.": "LOT-0000", "Expiry Date": null, "Location": "Main Stock", "Initial Qty": 0, "IN": 0, "OUT": 6.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": -6.0, "Min Stock": 1.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": -6.0}, {"Brand": "Match", "Product Code": "140000", "Product Name": "TAPE Compatible Cartridge (Black Matt Silver)", "Lot No.": "LOT-C1", "Expiry Date": null, "Location": "Main Stock", "Initial Qty": 11.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 11.0, "Min Stock": 1.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 11.0}, {"Brand": "Match", "Product Code": "140082", "Product Name": "Brady label M71-19-427", "Lot No.": "LOT-33630024", "Expiry Date": "2026-07-23", "Location": "Main Stock", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 1.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 2.0}, {"Brand": "Match", "Product Code": "140092", "Product Name": "Brady ribbon M71-R4300", "Lot No.": "LOT-26917466", "Expiry Date": "2024-02-17", "Location": "Main Stock", "Initial Qty": 1.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 1.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 1.0}, {"Brand": "Match", "Product Code": "180020", "Product Name": "Rectangular RFID tag", "Lot No.": "LOT-20240425", "Expiry Date": "2027-04-25", "Location": "Main Stock", "Initial Qty": 200.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 200.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 200.0}, {"Brand": "Match", "Product Code": "180020", "Product Name": "Rectangular RFID tag", "Lot No.": "LOT-20250808", "Expiry Date": "2028-08-08", "Location": "Main Stock", "Initial Qty": 250.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 250.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 250.0}, {"Brand": "Match", "Product Code": "180020", "Product Name": "Rectangular RFID tag", "Lot No.": "LOT-20250920", "Expiry Date": "2028-09-20", "Location": "Main Stock", "Initial Qty": 200.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 200.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 200.0}, {"Brand": "Match", "Product Code": "180040", "Product Name": "Dish RFID tag", "Lot No.": "LOT-20230831", "Expiry Date": "2026-08-31", "Location": "Main Stock", "Initial Qty": 160.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 160.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 160.0}, {"Brand": "Match", "Product Code": "180040", "Product Name": "Dish RFID tag", "Lot No.": "LOT-20240915", "Expiry Date": "2027-09-15", "Location": "Main Stock", "Initial Qty": 200.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 200.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 200.0}, {"Brand": "Match", "Product Code": "180050", "Product Name": "Dish RFID tag (ICSI)", "Lot No.": "LOT-20250920", "Expiry Date": "2028-09-20", "Location": "Main Stock", "Initial Qty": 370.0, "IN": 0, "OUT": 200.0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 170.0, "Min Stock": 20.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 170.0}, {"Brand": "Match", "Product Code": "BMM-BAT-T7", "Product Name": "Battery for Tank Dual-temperature collector", "Lot No.": "LOT-B1", "Expiry Date": null, "Location": "Main Stock", "Initial Qty": 1.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 1.0, "Min Stock": 2.0, "Unit": "Pcs.", "Pcs/Box": 0, "Balance (Pcs)": 1.0}, {"Brand": "Metiec", "Product Code": "F31012", "Product Name": "Dish 35 mm", "Lot No.": "LOT-2444200001", "Expiry Date": "2027-10-30", "Location": "Stock Room", "Initial Qty": 10.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 10.0, "Min Stock": 0, "Unit": "nan", "Pcs/Box": 0, "Balance (Pcs)": 10.0}, {"Brand": "Metiec", "Product Code": "F52012", "Product Name": "Dish 90 mlm", "Lot No.": "LOT-2330200005", "Expiry Date": "2026-07-27", "Location": "Stock Room", "Initial Qty": 10.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 10.0, "Min Stock": 0, "Unit": "nan", "Pcs/Box": 0, "Balance (Pcs)": 10.0}, {"Brand": "Metiec", "Product Code": "F57021", "Product Name": "Tube 5 ml", "Lot No.": "LOT-2444450001", "Expiry Date": "2026-10-27", "Location": "Stock Room", "Initial Qty": 25.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 25.0, "Min Stock": 0, "Unit": "nan", "Pcs/Box": 0, "Balance (Pcs)": 25.0}, {"Brand": "Metiec", "Product Code": "F57022", "Product Name": "Sample", "Lot No.": "LOT-2444450002", "Expiry Date": "2026-10-28", "Location": "Stock Room", "Initial Qty": 19.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 19.0, "Min Stock": 0, "Unit": "nan", "Pcs/Box": 0, "Balance (Pcs)": 19.0}, {"Brand": "Metiec", "Product Code": "F57023", "Product Name": "Tube 15 ml", "Lot No.": "LOT-2431950003", "Expiry Date": "2026-07-30", "Location": "Stock Room", "Initial Qty": 7.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 7.0, "Min Stock": 0, "Unit": "nan", "Pcs/Box": 0, "Balance (Pcs)": 7.0}, {"Brand": "Metiec", "Product Code": "MSC413", "Product Name": "Sperm Container", "Lot No.": "LOT-2419410001", "Expiry Date": "2024-05-08", "Location": "Stock Room", "Initial Qty": 2.0, "IN": 0, "OUT": 0, "Adjust +": 0, "Adjust -": 0, "Balance / SOH": 2.0, "Min Stock": 0, "Unit": "nan", "Pcs/Box": 0, "Balance (Pcs)": 2.0}],"stock_movement":[{"Date": "2026-05-18", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-V-5", "Product Name": "RC-V-5", "Lot No.": "LOT-2511003", "Expiry Date": "2026-11-17", "Location": "Cold Room", "Qty": 2.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท เชียงใหม่ ไอ.วี.เอฟ. การแพทย์ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-05-18", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC-T-1", "Lot No.": "LOT-20260303", "Expiry Date": "2027-10-03", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท เชียงใหม่ ไอ.วี.เอฟ. การแพทย์ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-05-18", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260502", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 2.0, "Unit": "Box", "Ref / Invoice": "IV6905016", "Customer / Supplier": "บริษัท เชียงใหม่ ไอ.วี.เอฟ. การแพทย์ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-05-19", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC-T-1", "Lot No.": "LOT-20260303", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "BIC - Bangkok IVF Clinic", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (Cannada)", "Product Code": "B-30FP01", "Product Name": "B-30FP01", "Lot No.": "LOT-B30FP012202", "Expiry Date": "2028-08-31", "Location": "Main Stock", "Qty": 3.0, "Unit": "Pcs.", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "Smile IVF Clinic", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260304", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "Smile IVF Clinic", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "Jy-S-R", "Product Name": "Jy-S-R", "Lot No.": "LOT-JYS-R2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Qty": 16.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905018", "Customer / Supplier": "สามแยกไฟฉายโพลีคลีนิค", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "Jy-S-G", "Product Name": "Jy-S-G", "Lot No.": "LOT-JYS-G2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Qty": 17.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905018", "Customer / Supplier": "สามแยกไฟฉายโพลีคลีนิค", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "Jy-S-Y", "Product Name": "Jy-S-Y", "Lot No.": "LOT-LYS-Y2303", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Qty": 17.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905018", "Customer / Supplier": "สามแยกไฟฉายโพลีคลีนิค", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "I-3001", "Product Name": "I-3001", "Lot No.": "LOT-2411004", "Expiry Date": "2028-02-29", "Location": "Main Stock", "Qty": 3.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905018", "Customer / Supplier": "สามแยกไฟฉายโพลีคลีนิค", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-21", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Qty": 5.0, "Unit": "Bottle", "Ref / Invoice": "IV6905020", "Customer / Supplier": "บริษัท บีเอ็มที คอนซัลติ้ง จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-22", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "IV6905023", "Customer / Supplier": "บริษัท นวบุตร สยาม จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-22", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-S", "Product Name": "RC-S", "Lot No.": "LOT-250908", "Expiry Date": "2027-08-31", "Location": "Cold Room", "Qty": 2.0, "Unit": "Bottle", "Ref / Invoice": "IV6905023", "Customer / Supplier": "บริษัท นวบุตร สยาม จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-25", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 4.0, "Unit": "Box", "Ref / Invoice": "IV6905022", "Customer / Supplier": "บริษัท เจตนิน จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-25", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "Jy-S-G", "Product Name": "Jy-S-G", "Lot No.": "LOT-JYS-G2303", "Expiry Date": "2028-01-31", "Location": "Main Stock", "Qty": 14.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905024", "Customer / Supplier": "บริษัท คลีนิกสูตินรีรักษ์แพทย์หญิงนานา จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-05-25", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "Jy-S-Y", "Product Name": "Jy-S-Y", "Lot No.": "LOT-LYS-Y2303", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Qty": 14.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905024", "Customer / Supplier": "บริษัท คลีนิกสูตินรีรักษ์แพทย์หญิงนานา จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-05-25", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC-T-1", "Lot No.": "LOT-20260303", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท อินสไปร์ ไอวีเอฟ จำกัด (มหาชน)", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-25", "Type": "OUT", "Brand": "IVF Co.", "Product Code": "co-002", "Product Name": "co-002", "Lot No.": "LOT-CR1024", "Expiry Date": "2027-10-31", "Location": "Stock Room", "Qty": 3.0, "Unit": "Pcs.", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท อินสไปร์ ไอวีเอฟ จำกัด (มหาชน)", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-26", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260502", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บอร์นไอวีเอฟคลินิกเฉพาะทางด้านเวชกรรมสูติ-นรีเวช", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-25", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บอร์นไอวีเอฟคลินิกเฉพาะทางด้านเวชกรรมสูติ-นรีเวช", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-25", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-V-1", "Product Name": "RC-V-1", "Lot No.": "LOT-2511003", "Expiry Date": "2026-11-17", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บอร์นไอวีเอฟคลินิกเฉพาะทางด้านเวชกรรมสูติ-นรีเวช", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-26", "Type": "OUT", "Brand": "Match", "Product Code": "140000", "Product Name": "140000", "Lot No.": "LOT-0000", "Expiry Date": null, "Location": "Main Stock", "Qty": 6.0, "Unit": "Pcs.", "Ref / Invoice": "IV6905025", "Customer / Supplier": "บริษัท เมดพาร์ค ไอวีเอฟ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-05-26", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "JY-1110", "Product Name": "JY-1110", "Lot No.": "LOT20260404", "Expiry Date": "2027-04-13", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "IV6905026", "Customer / Supplier": "บริษัท ศูนย์แพทย์กุลบุตร จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-05-26", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "H-3502", "Product Name": "H-3502", "Lot No.": "LOT-L2406001", "Expiry Date": "2027-08-31", "Location": "Main Stock", "Qty": 3.0, "Unit": "Pcs.", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท กิฟท์เฟอร์ทิลิตี้ จำกัด (001 สาขานอร์ธปาร์ค)", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-28", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Qty": 4.0, "Unit": "Bottle", "Ref / Invoice": "IV6905027", "Customer / Supplier": "บริษัท แคลิฟอร์เนีย เมดิคอล แมเนจเม้นท์ (ไทยแลนด์) จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-05-29", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 2.0, "Unit": "Box", "Ref / Invoice": "ใบส่่งชั่วคราว", "Customer / Supplier": "Deep & Harmonicare IVF Center (Thailand) Co., Ltd.", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-04", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท ชาดา ไอวีเอฟ จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-04", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260304", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท ชาดา ไอวีเอฟ จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-04", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260304", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท เอ็มบริโอ แพลนเนท จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-04", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260304", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท มิลเลนเนียม กรุ๊ป จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-04", "Type": "OUT", "Brand": "IVF Co.", "Product Code": "co-002", "Product Name": "co-002", "Lot No.": "LOT-CR1024", "Expiry Date": "2027-10-31", "Location": "Stock Room", "Qty": 2.0, "Unit": "Pcs.", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท มิลเลนเนียม กรุ๊ป จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-05", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท ลีดดิ้ง รีโปรดักทีฟ เซ็นเตอร์ จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-06-05", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-S", "Product Name": "RC-S", "Lot No.": "LOT-250908", "Expiry Date": "2027-08-31", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท ลีดดิ้ง รีโปรดักทีฟ เซ็นเตอร์ จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-06-05", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC-T-1", "Lot No.": "LOT-20260303", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "BIC - Bangkok IVF Clinic", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-08", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T-1", "Product Name": "RC-T-1", "Lot No.": "LOT-20260303", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "BIC - Bangkok IVF Clinic", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-08", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "H-3502", "Product Name": "H-3502", "Lot No.": "LOT-L2406001", "Expiry Date": "2027-08-31", "Location": "Main Stock", "Qty": 2.0, "Unit": "Box", "Ref / Invoice": "IV6906004", "Customer / Supplier": "บริษัท กิฟท์ ไอดับบลิวซี วีเมน เฮลท์ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-08", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "H-3502", "Product Name": "H-3502", "Lot No.": "LOT-L2406001", "Expiry Date": "2027-08-31", "Location": "Main Stock", "Qty": 2.0, "Unit": "Pcs.", "Ref / Invoice": "IV6906004", "Customer / Supplier": "บริษัท กิฟท์ ไอดับบลิวซี วีเมน เฮลท์ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-08", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Qty": 6.0, "Unit": "Bottle", "Ref / Invoice": "IV6906004", "Customer / Supplier": "บริษัท กิฟท์ ไอดับบลิวซี วีเมน เฮลท์ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-08", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-03-10", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "ใบส่งสินค้าชั่วคราว", "Customer / Supplier": "บริษัท เจตนิน จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-06-09", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Qty": 5.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่่งชั่วคราว", "Customer / Supplier": "Deep & Harmonicare IVF Center (Thailand) Co., Ltd.", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-10", "Type": "OUT", "Brand": "Match", "Product Code": "180050", "Product Name": "180050", "Lot No.": "LOT-20250920", "Expiry Date": "2028-09-20", "Location": "Main Stock", "Qty": 200.0, "Unit": "Pcs.", "Ref / Invoice": "IV6906005", "Customer / Supplier": "บริษัท เมดพาร์ค ไอวีเอฟ จำกัด", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-10", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-V-1", "Product Name": "RC-V-1", "Lot No.": "LOT-2511003", "Expiry Date": "2026-11-17", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-10", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T", "Product Name": "RC-T", "Lot No.": "LOT-2511004", "Expiry Date": "2026-11-20", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-10", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-V-1", "Product Name": "RC-V-1", "Lot No.": "LOT-2511003", "Expiry Date": "2026-11-17", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "คณะแพทยศาสตร์ รามาธิบดี", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-06-10", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-T", "Product Name": "RC-T", "Lot No.": "LOT-2511004", "Expiry Date": "2026-11-20", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "คณะแพทยศาสตร์ รามาธิบดี", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-06-10", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-S-O", "Product Name": "RC-S-O", "Lot No.": "LOT-2312004", "Expiry Date": "2026-12-31", "Location": "Main Stock", "Qty": 47.0, "Unit": "Pcs.", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "คืนสินค้าจากการไปออกบูธที่เชียงใหม่"}, {"Date": "2026-06-10", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "40002013", "Product Name": "40002013", "Lot No.": "LOT-CW402301", "Expiry Date": "2026-12-31", "Location": "Stock Room", "Qty": 3.0, "Unit": "Pcs.", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "คืนสินค้าจากการไปออกบูธที่เชียงใหม่"}, {"Date": "2026-06-10", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "40002014", "Product Name": "40002014", "Lot No.": "LOT-CD400123", "Expiry Date": "31/04/2026", "Location": "Stock Room", "Qty": 9.0, "Unit": "Set", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "คืนสินค้าจากการไปออกบูธที่เชียงใหม่"}, {"Date": "2026-06-10", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "40002014", "Product Name": "40002014", "Lot No.": "LOT-CD400123", "Expiry Date": "31/04/2026", "Location": "Stock Room", "Qty": 3.0, "Unit": "Pcs.", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "คืนสินค้าจากการไปออกบูธที่เชียงใหม่"}, {"Date": "2026-06-10", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "40002009", "Product Name": "40002009", "Lot No.": "LOT-4WC0108D", "Expiry Date": "2026-08-31", "Location": "Stock Room", "Qty": 24.0, "Unit": "Set", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "คืนสินค้าจากการไปออกบูธที่เชียงใหม่"}, {"Date": "2026-06-10", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "D-190", "Product Name": "D-190", "Lot No.": "LOT-D1902304", "Expiry Date": "2028-01-31", "Location": "Stock Room", "Qty": 1.0, "Unit": "Pcs.", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "คืนสินค้าจากการไปออกบูธที่เชียงใหม่"}, {"Date": "2026-06-11", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-2512002", "Expiry Date": "2027-11-30", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "ใบส่งตัวอย่าง", "Customer / Supplier": "บริษัท บีเอ็มที คอนซัลติ้ง จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-11", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-S", "Product Name": "RC-S", "Lot No.": "LOT-250908", "Expiry Date": "2027-08-31", "Location": "Cold Room", "Qty": 10.0, "Unit": "Box", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-11", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-10-03", "Location": "Cold Room", "Qty": 19.0, "Unit": "Box", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-11", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260502", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 5.0, "Unit": "Box", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-11", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-1010", "Product Name": "RC-1010", "Lot No.": "LOT-20260502", "Expiry Date": "2026-11-05", "Location": "Cold Room", "Qty": 1.0, "Unit": "Bottle", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-11", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "B-30FP02", "Product Name": "B-30FP02", "Lot No.": "LOT-2411004", "Expiry Date": "2028-02-29", "Location": "Main Stock", "Qty": 2.0, "Unit": "Box", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-11", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "B-30FP03", "Product Name": "B-30FP03", "Lot No.": "LOT-20251208", "Expiry Date": "31/11/2028", "Location": "Main Stock", "Qty": 2.0, "Unit": "Box", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-12", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "H-3001", "Product Name": "H-3001", "Lot No.": "LOT-2510001", "Expiry Date": "2028-12-31", "Location": "Main Stock", "Qty": 100.0, "Unit": "Box", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-12", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-20260101", "Expiry Date": "2028-03-31", "Location": "Cold Room", "Qty": 75.0, "Unit": "Bottle", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "FedEX"}, {"Date": "2026-06-12", "Type": "IN", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-20260101", "Expiry Date": "2028-03-31", "Location": "Cold Room", "Qty": 25.0, "Unit": "Bottle", "Ref / Invoice": "", "Customer / Supplier": "", "Staff": "", "Remark": "กล่องเหลือง"}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-20260101", "Expiry Date": "2028-03-31", "Location": "Cold Room", "Qty": 5.0, "Unit": "Bottle", "Ref / Invoice": "IV6906007", "Customer / Supplier": "บอร์นไอวีเอฟคลินิกเฉพาะทางด้านเวชกรรมสูติ-นรีเวช", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1070-1", "Product Name": "RC-1070-1", "Lot No.": "LOT-20260502", "Expiry Date": "2026-05-11", "Location": "Cold Room", "Qty": 1.0, "Unit": "Box", "Ref / Invoice": "IV6906008", "Customer / Supplier": "บริษัท มิลเลนเนียม กรุ๊ป จำกัด", "Staff": "Tossapol", "Remark": ""}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-10-03", "Location": "Cold Room", "Qty": 3.0, "Unit": "Box", "Ref / Invoice": "IV6906006", "Customer / Supplier": "บริษัท เจตนิน จำกัด", "Staff": "Kanticha", "Remark": ""}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-1060-1", "Product Name": "RC-1060-1", "Lot No.": "LOT-20260302", "Expiry Date": "2027-10-03", "Location": "Cold Room", "Qty": 4.0, "Unit": "Box", "Ref / Invoice": "IV6906009", "Customer / Supplier": "Deep & Harmonicare IVF Center (Thailand) Co., Ltd.", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "RC-O-100", "Product Name": "RC-O-100", "Lot No.": "LOT-20260101", "Expiry Date": "2028-03-31", "Location": "Cold Room", "Qty": 5.0, "Unit": "Bottle", "Ref / Invoice": "IV6906009", "Customer / Supplier": "Deep & Harmonicare IVF Center (Thailand) Co., Ltd.", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "H-3001", "Product Name": "H-3001", "Lot No.": "LOT-2510001", "Expiry Date": "2028-12-31", "Location": "Main Stock", "Qty": 10.0, "Unit": "Box", "Ref / Invoice": "IV6906009", "Customer / Supplier": "Deep & Harmonicare IVF Center (Thailand) Co., Ltd.", "Staff": "Thicha", "Remark": ""}, {"Date": "2026-06-12", "Type": "OUT", "Brand": "ARSCI (China)", "Product Code": "H-3001", "Product Name": "H-3001", "Lot No.": "LOT-2510001", "Expiry Date": "2028-12-31", "Location": "Main Stock", "Qty": 15.0, "Unit": "Box", "Ref / Invoice": "IV6906010", "Customer / Supplier": "Deep & Harmonicare IVF Center (Thailand) Co., Ltd.", "Staff": "Thicha", "Remark": ""}]};
+
+// ===== STATE =====
+let state = {
+  products: [...INIT_DATA.product_master],
+  stockBalance: [...INIT_DATA.stock_balance],
+  movements: [...INIT_DATA.stock_movements || INIT_DATA.stock_movement || []],
+  dropdowns: {
+    brands: INIT_DATA.brands,
+    units: INIT_DATA.units,
+    locations: INIT_DATA.locations,
+    staff: INIT_DATA.staff_list,
+    customers: INIT_DATA.customers,
+    categories: INIT_DATA.categories,
+    suppliers: INIT_DATA.suppliers
+  }
+};
+
+let currentPage = 'dashboard';
+
+// ===== PERSISTENT STORAGE (localStorage) =====
+const LS_KEY = 'aithai_stock_state';
+
+function loadSharedState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.products) state.products = saved.products;
+      if (saved.stockBalance) state.stockBalance = saved.stockBalance;
+      if (saved.movements) state.movements = saved.movements;
+      if (saved.dropdowns) state.dropdowns = Object.assign(state.dropdowns, saved.dropdowns);
+      console.log('Loaded state from localStorage');
+    } else {
+      saveSharedState(false);
+    }
+  } catch(e) {
+    console.log('localStorage load error (using defaults):', e.message);
+  }
+  render();
+}
+
+function saveSharedState(showBar = true) {
+  try {
+    const toSave = {
+      products: state.products,
+      stockBalance: state.stockBalance,
+      movements: state.movements,
+      dropdowns: state.dropdowns,
+      lastSaved: new Date().toISOString()
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+    if (showBar) showSyncBar('💾 บันทึกข้อมูลแล้ว (localStorage)');
+  } catch(e) {
+    console.log('localStorage save error:', e.message);
+    if (showBar) showSyncBar('⚠️ บันทึกไม่ได้');
+  }
+}
+
+function showSyncBar(msg) {
+  const bar = document.getElementById('sync-bar');
+  const msgEl = document.getElementById('sync-msg');
+  if (!bar || !msgEl) return;
+  msgEl.textContent = msg;
+  bar.classList.remove('hidden');
+  setTimeout(() => bar.classList.add('hidden'), 3500);
+}
+
+function refreshFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.products) state.products = saved.products;
+      if (saved.stockBalance) state.stockBalance = saved.stockBalance;
+      if (saved.movements) state.movements = saved.movements;
+      if (saved.dropdowns) state.dropdowns = Object.assign(state.dropdowns, saved.dropdowns);
+    }
+  } catch(e) {}
+  render();
+  showToast('รีเฟรชข้อมูลสำเร็จ');
+}
+
+// ===== EXPORT / IMPORT JSON =====
+function exportJSON() {
+  const toSave = {
+    products: state.products,
+    stockBalance: state.stockBalance,
+    movements: state.movements,
+    dropdowns: state.dropdowns,
+    exportedAt: new Date().toISOString()
+  };
+  const json = JSON.stringify(toSave, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `aithai_stock_backup_${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Export JSON สำเร็จ');
+}
+
+function importJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.stockBalance && !data.products) {
+          showToast('ไฟล์ JSON ไม่ถูกต้อง', 'error');
+          return;
+        }
+        if (!confirm(`นำเข้าข้อมูลจากไฟล์ "${file.name}"?\nข้อมูลปัจจุบันจะถูกแทนที่`)) return;
+        if (data.products) state.products = data.products;
+        if (data.stockBalance) state.stockBalance = data.stockBalance;
+        if (data.movements) state.movements = data.movements;
+        if (data.dropdowns) state.dropdowns = Object.assign(state.dropdowns, data.dropdowns);
+        saveSharedState(false);
+        render();
+        showToast('Import JSON สำเร็จ ✅');
+      } catch(err) {
+        showToast('อ่านไฟล์ไม่ได้: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function resetToDefault() {
+  if (!confirm('⚠️ ล้างข้อมูลทั้งหมดและกลับไปใช้ข้อมูลเริ่มต้น?\nการกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  localStorage.removeItem(LS_KEY);
+  state.products = [...INIT_DATA.product_master];
+  state.stockBalance = [...INIT_DATA.stock_balance];
+  state.movements = [...(INIT_DATA.stock_movements || INIT_DATA.stock_movement || [])];
+  state.dropdowns = {
+    brands: INIT_DATA.brands, units: INIT_DATA.units,
+    locations: INIT_DATA.locations, staff: INIT_DATA.staff_list,
+    customers: INIT_DATA.customers, categories: INIT_DATA.categories,
+    suppliers: INIT_DATA.suppliers
+  };
+  render();
+  showToast('รีเซ็ตข้อมูลเป็นค่าเริ่มต้นแล้ว');
+}
+
+
+
+// ===== HELPERS =====
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function daysUntilExpiry(dateStr) {
+  if (!dateStr) return null;
+  let d;
+  // Try multiple formats
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) d = new Date(dateStr);
+  else if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+    const [dd,mm,yy] = dateStr.split('/');
+    d = new Date(`${yy}-${mm}-${dd}`);
+  } else d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return Math.floor((d - new Date()) / 86400000);
+}
+
+function expiryBadge(dateStr) {
+  const days = daysUntilExpiry(dateStr);
+  if (days === null) return '<span class="badge badge-gray">N/A</span>';
+  if (days < 0) return `<span class="badge badge-red">🔴 หมดอายุ (${Math.abs(days)}d)</span>`;
+  if (days <= 30) return `<span class="badge badge-red">🔴 ≤30 วัน</span>`;
+  if (days <= 60) return `<span class="badge badge-orange">🟠 ≤60 วัน</span>`;
+  if (days <= 90) return `<span class="badge badge-yellow">🟡 ≤90 วัน</span>`;
+  return `<span class="badge badge-green">✅ ปกติ</span>`;
+}
+
+function expiryClass(dateStr) {
+  const days = daysUntilExpiry(dateStr);
+  if (days === null) return '';
+  if (days < 0) return 'badge-red';
+  if (days <= 30) return 'badge-red';
+  if (days <= 60) return 'badge-orange';
+  if (days <= 90) return 'badge-yellow';
+  return 'badge-green';
+}
+
+function reorderBadge(row) {
+  const bal = parseFloat(row['Balance / SOH']) || 0;
+  const min = parseFloat(row['Min Stock']) || 0;
+  if (bal <= 0) return '<span class="badge badge-red">⛔ Out of Stock</span>';
+  if (bal <= min) return '<span class="badge badge-orange">⚠️ Reorder</span>';
+  return '<span class="badge badge-green">✅ OK</span>';
+}
+
+function fmtDate(d) {
+  if (!d) return '-';
+  const m = d.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return d;
+}
+
+function getProductInfo(brand, code) {
+  return state.products.find(p => p['Brand'] === brand && p['Product Code'] === code) || null;
+}
+
+function getCodesForBrand(brand) {
+  return [...new Set(state.products.filter(p => p['Brand'] === brand).map(p => p['Product Code']))];
+}
+
+function getNameForCode(brand, code) {
+  const p = getProductInfo(brand, code);
+  return p ? p['Product Name'] : '';
+}
+
+function getPcsPerBox(brand, code) {
+  const p = getProductInfo(brand, code);
+  return p ? (parseFloat(p['Pcs per Box']) || 0) : 0;
+}
+
+function makeOpts(arr, placeholder = 'เลือก...') {
+  return `<option value="">${placeholder}</option>` + arr.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'success' ? '✅ ' : '❌ ') + msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function openModal(title, body, footer) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-footer').innerHTML = footer || '';
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').style.display = 'none';
+  }
+}
+
+function showPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('onclick') === `showPage('${page}')`);
+  });
+  render();
+}
+
+// ===== RENDER =====
+function render() {
+  const titles = {
+    dashboard: 'Dashboard', balance: 'สต็อกคงเหลือแยก Lot',
+    summary: 'สรุปรายสินค้า', expiry: 'ติดตามวันหมดอายุ',
+    'movement-in': 'รับสินค้าเข้า (IN)', 'movement-out': 'ตัดสินค้าออก (OUT)',
+    'movement-log': 'ประวัติการเคลื่อนไหว', products: 'Product Master',
+    'settings-customers': 'จัดการ Customer', 'settings-staff': 'จัดการ Staff',
+    'settings-dropdowns': 'ตั้งค่า Brand / Location / หน่วย / อื่นๆ'
+  };
+  document.getElementById('page-title').textContent = titles[currentPage] || '';
+  
+  const dataBtn = `<button class="btn btn-secondary btn-sm" onclick="exportJSON()" title="บันทึกข้อมูลทั้งหมดเป็นไฟล์ JSON">💾 Export JSON</button> <button class="btn btn-secondary btn-sm" onclick="importJSON()" title="โหลดข้อมูลจากไฟล์ JSON">📂 Import JSON</button>`;
+  const actions = {
+    products: `<button class="btn btn-primary" onclick="openAddProduct()">＋ เพิ่มสินค้า</button> ${dataBtn}`,
+    balance: `<button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 Export CSV</button> ${dataBtn}`,
+    dashboard: `${dataBtn} <button class="btn btn-secondary btn-sm" onclick="resetToDefault()" title="ล้างข้อมูลและกลับค่าเริ่มต้น">🗑️ Reset</button>`,
+    'movement-log': dataBtn,
+    'movement-in': dataBtn,
+    'movement-out': dataBtn
+  };
+  document.getElementById('topbar-actions').innerHTML = actions[currentPage] || '';
+  
+  const pages = {
+    dashboard: renderDashboard,
+    balance: renderBalance,
+    summary: renderSummary,
+    expiry: renderExpiry,
+    'movement-in': renderMovementIn,
+    'movement-out': renderMovementOut,
+    'movement-log': renderMovementLog,
+    products: renderProducts,
+    'settings-customers': renderSettingsCustomers,
+    'settings-staff': renderSettingsStaff,
+    'settings-dropdowns': renderSettingsDropdowns
+  };
+  const fn = pages[currentPage];
+  if (fn) {
+    document.getElementById('main-content').innerHTML = fn();
+    setTimeout(() => {
+      if (currentPage === 'balance') rerenderBalance();
+      else if (currentPage === 'summary') rerenderSummary();
+      else if (currentPage === 'movement-log') rerenderMovLog();
+      else if (currentPage === 'products') rerenderProducts();
+    }, 20);
+  } else {
+    document.getElementById('main-content').innerHTML = '';
+  }
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const today_d = new Date();
+  const activeRows = state.stockBalance.filter(r => r['Location'] !== 'Expired');
+  const expired = activeRows.filter(r => { const d = daysUntilExpiry(r['Expiry Date']); return d !== null && d < 0; });
+  const soon30 = activeRows.filter(r => { const d = daysUntilExpiry(r['Expiry Date']); return d !== null && d >= 0 && d <= 30; });
+  const soon60 = activeRows.filter(r => { const d = daysUntilExpiry(r['Expiry Date']); return d !== null && d > 30 && d <= 60; });
+  const ok = activeRows.filter(r => { const d = daysUntilExpiry(r['Expiry Date']); return d === null || d > 60; });
+  const outOfStock = activeRows.filter(r => (parseFloat(r['Balance / SOH']) || 0) <= 0);
+  const reorder = activeRows.filter(r => {
+    const b = parseFloat(r['Balance / SOH']) || 0;
+    const m = parseFloat(r['Min Stock']) || 0;
+    return b > 0 && b <= m;
+  });
+  const totalLots = activeRows.length;
+  
+  const recentMovements = state.movements.slice(0, 5);
+  
+  return `
+    <div class="stats-grid">
+      <div class="stat-card stat-blue"><div class="stat-label">Lot ทั้งหมด</div><div class="stat-value">${totalLots}</div><div class="stat-sub">active lots</div></div>
+      <div class="stat-card stat-red"><div class="stat-label">🔴 หมดอายุแล้ว</div><div class="stat-value">${expired.length}</div><div class="stat-sub">lots</div></div>
+      <div class="stat-card stat-orange"><div class="stat-label">🟠 ≤ 30 วัน</div><div class="stat-value">${soon30.length}</div><div class="stat-sub">lots</div></div>
+      <div class="stat-card stat-yellow"><div class="stat-label">🟡 31-60 วัน</div><div class="stat-value">${soon60.length}</div><div class="stat-sub">lots</div></div>
+      <div class="stat-card stat-red"><div class="stat-label">⛔ Out of Stock</div><div class="stat-value">${outOfStock.length}</div><div class="stat-sub">lots</div></div>
+      <div class="stat-card stat-orange"><div class="stat-label">⚠️ ต้อง Reorder</div><div class="stat-value">${reorder.length}</div><div class="stat-sub">lots</div></div>
+    </div>
+
+    <div class="two-col-grid" style="gap:16px">
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">🔴 สินค้าหมดอายุ / ใกล้หมด (≤60 วัน)</div></div>
+        <div style="max-height:300px;overflow-y:auto">
+        <table>
+          <tr><th>Brand</th><th>Code</th><th>Lot</th><th>Expiry</th><th>Status</th></tr>
+          ${[...expired, ...soon30, ...soon60].slice(0,15).map(r => `
+            <tr>
+              <td><span class="badge badge-gray">${r['Brand']}</span></td>
+              <td class="code">${r['Product Code']}</td>
+              <td class="lot">${r['Lot No.']}</td>
+              <td>${fmtDate(r['Expiry Date'])}</td>
+              <td>${expiryBadge(r['Expiry Date'])}</td>
+            </tr>
+          `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">ไม่มีสินค้าที่น่ากังวล ✅</td></tr>'}
+        </table>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">📜 การเคลื่อนไหวล่าสุด</div></div>
+        <div style="max-height:300px;overflow-y:auto">
+        <table>
+          <tr><th>วันที่</th><th>Type</th><th>Code</th><th>Lot</th><th>Qty</th></tr>
+          ${recentMovements.map(m => `
+            <tr>
+              <td style="font-size:11px">${fmtDate(m['Date'])}</td>
+              <td><span class="badge ${m['Type']==='IN'?'badge-green':m['Type']==='OUT'?'badge-red':'badge-blue'}">${m['Type']}</span></td>
+              <td class="code">${m['Product Code']}</td>
+              <td class="lot">${m['Lot No.']}</td>
+              <td>${m['Qty']} ${m['Unit']||''}</td>
+            </tr>
+          `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3)">ยังไม่มีรายการ</td></tr>'}
+        </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== BALANCE =====
+let balFilter = { brand: '', code: '', location: '', expiry: '' };
+function renderBalance() {
+  const html = `
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">สต็อกคงเหลือ แยกตาม Lot</div>
+        <div class="filter-bar">
+          <select class="form-control" style="min-width:130px" onchange="balFilter.brand=this.value;rerenderBalance()">
+            <option value="">ทุก Brand</option>
+            ${state.dropdowns.brands.map(b => `<option value="${b}">${b}</option>`).join('')}
+          </select>
+          <select class="form-control" style="min-width:130px" onchange="balFilter.location=this.value;rerenderBalance()">
+            <option value="">ทุก Location</option>
+            ${state.dropdowns.locations.map(l => `<option value="${l}">${l}</option>`).join('')}
+          </select>
+          <select class="form-control" style="min-width:140px" onchange="balFilter.expiry=this.value;rerenderBalance()">
+            <option value="">ทุก Expiry Status</option>
+            <option value="expired">🔴 หมดอายุ</option>
+            <option value="soon30">🔴 ≤30 วัน</option>
+            <option value="soon60">🟠 ≤60 วัน</option>
+            <option value="ok">✅ ปกติ</option>
+          </select>
+          <div class="search-input">
+            <input class="form-control" id="bal-search" placeholder="ค้นหา Code / ชื่อ..." oninput="rerenderBalance()">
+          </div>
+        </div>
+      </div>
+      <div id="balance-table-body"></div>
+    </div>
+  `;
+  setTimeout(rerenderBalance, 0);
+  return html;
+}
+
+function rerenderBalance() {
+  const search = (document.getElementById('bal-search')?.value || '').toLowerCase();
+  let rows = state.stockBalance.filter(r => {
+    if (balFilter.brand && r['Brand'] !== balFilter.brand) return false;
+    if (balFilter.location && r['Location'] !== balFilter.location) return false;
+    if (balFilter.expiry) {
+      const d = daysUntilExpiry(r['Expiry Date']);
+      if (balFilter.expiry === 'expired' && !(d !== null && d < 0)) return false;
+      if (balFilter.expiry === 'soon30' && !(d !== null && d >= 0 && d <= 30)) return false;
+      if (balFilter.expiry === 'soon60' && !(d !== null && d > 30 && d <= 60)) return false;
+      if (balFilter.expiry === 'ok' && !(d === null || d > 60)) return false;
+    }
+    if (search) {
+      const s = (r['Product Code']||'').toLowerCase() + ' ' + (r['Product Name']||'').toLowerCase() + ' ' + (r['Lot No.']||'').toLowerCase();
+      if (!s.includes(search)) return false;
+    }
+    return true;
+  });
+  
+  const el = document.getElementById('balance-table-body');
+  if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>ไม่พบข้อมูล</p></div>'; return; }
+  
+  el.innerHTML = `<div style="overflow-x:auto"><table>
+    <tr>
+      <th>Brand</th><th>Code</th><th>Product Name</th><th>Lot No.</th>
+      <th>Expiry Date</th><th>Location</th><th>Balance</th><th>Unit</th>
+      <th>Min Stock</th><th>Reorder</th><th>Expiry</th><th></th>
+    </tr>
+    ${rows.map(r => `
+      <tr>
+        <td><span class="badge badge-gray" style="font-size:11px">${r['Brand']}</span></td>
+        <td class="code">${r['Product Code']}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r['Product Name']}">${r['Product Name']||'-'}</td>
+        <td class="lot">${r['Lot No.']||'-'}</td>
+        <td style="font-size:12px">${fmtDate(r['Expiry Date'])}</td>
+        <td><span class="badge badge-gray" style="font-size:11px">${r['Location']||'-'}</span></td>
+        <td style="font-family:var(--mono);font-weight:600;${(parseFloat(r['Balance / SOH'])||0)<=0?'color:var(--red)':''}">${r['Balance / SOH']}</td>
+        <td style="font-size:12px">${r['Unit']||''}</td>
+        <td style="font-family:var(--mono);font-size:12px">${r['Min Stock']||0}</td>
+        <td>${reorderBadge(r)}</td>
+        <td>${expiryBadge(r['Expiry Date'])}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openAdjustStock(${state.stockBalance.indexOf(r)})" title="ปรับสต็อก">⚙️</button></td>
+      </tr>
+    `).join('')}
+  </table></div>`;
+}
+
+// Trigger rerender after DOM
+document.addEventListener('click', () => { if(currentPage==='balance') rerenderBalance(); });
+
+// ===== SUMMARY =====
+function renderSummary() {
+  const brandSel = `<select class="form-control" id="sum-brand" style="min-width:140px" onchange="rerenderSummary()">
+    <option value="">ทุก Brand</option>
+    ${state.dropdowns.brands.map(b => `<option value="${b}">${b}</option>`).join('')}
+  </select>`;
+  const codeSel = `<select class="form-control" id="sum-code" style="min-width:140px" onchange="rerenderSummary()">
+    <option value="">ทุก Product Code</option>
+    ${[...new Set(state.stockBalance.map(r=>r['Product Code']))].sort().map(c => `<option value="${c}">${c}</option>`).join('')}
+  </select>`;
+  
+  const html = `
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">สรุปสินค้าคงเหลือ รวมทุก Lot</div>
+        <div class="filter-bar">
+          ${brandSel}${codeSel}
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="sum-hide-expired" onchange="rerenderSummary()" style="cursor:pointer">
+            ซ่อน Lot หมดอายุ
+          </label>
+        </div>
+      </div>
+      <div id="summary-body" style="padding:12px"></div>
+    </div>
+  `;
+  setTimeout(rerenderSummary, 0);
+  return html;
+}
+
+function rerenderSummary() {
+  const brand = document.getElementById('sum-brand')?.value || '';
+  const code = document.getElementById('sum-code')?.value || '';
+  const hideExpired = document.getElementById('sum-hide-expired')?.checked;
+  
+  let rows = state.stockBalance.filter(r => {
+    if (brand && r['Brand'] !== brand) return false;
+    if (code && r['Product Code'] !== code) return false;
+    if (hideExpired) {
+      const d = daysUntilExpiry(r['Expiry Date']);
+      if (d !== null && d < 0) return false;
+    }
+    return true;
+  });
+  
+  // Group by Brand + Code
+  const grouped = {};
+  rows.forEach(r => {
+    const key = r['Brand'] + '|' + r['Product Code'];
+    if (!grouped[key]) grouped[key] = { brand: r['Brand'], code: r['Product Code'], name: r['Product Name'], unit: r['Unit'], minStock: parseFloat(r['Min Stock'])||0, lots: [] };
+    grouped[key].lots.push(r);
+  });
+  
+  const el = document.getElementById('summary-body');
+  if (!el) return;
+  const keys = Object.keys(grouped);
+  if (!keys.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>ไม่พบข้อมูล</p></div>'; return; }
+  
+  el.innerHTML = keys.map(key => {
+    const g = grouped[key];
+    const totalBal = g.lots.reduce((s,r) => s + (parseFloat(r['Balance / SOH'])||0), 0);
+    const expiredLots = g.lots.filter(r => { const d = daysUntilExpiry(r['Expiry Date']); return d !== null && d < 0; });
+    const warnLots = g.lots.filter(r => { const d = daysUntilExpiry(r['Expiry Date']); return d !== null && d >= 0 && d <= 60; });
+    const reorderNeeded = totalBal <= g.minStock;
+    
+    return `
+      <div class="product-summary">
+        <div class="product-summary-header">
+          <span class="ps-code">${g.code}</span>
+          <span class="badge badge-gray" style="font-size:11px">${g.brand}</span>
+          <span class="ps-name">${g.name||''}</span>
+          ${expiredLots.length ? `<span class="badge badge-red">🔴 ${expiredLots.length} Lot หมดอายุ</span>` : ''}
+          ${warnLots.length ? `<span class="badge badge-orange">⏰ ${warnLots.length} Lot ใกล้หมด</span>` : ''}
+          ${reorderNeeded && totalBal > 0 ? '<span class="badge badge-orange">⚠️ Reorder</span>' : ''}
+          ${totalBal <= 0 ? '<span class="badge badge-red">⛔ Out of Stock</span>' : ''}
+          <span class="ps-total" style="color:${totalBal<=0?'var(--red)':totalBal<=g.minStock?'var(--orange)':'var(--green)'}">${totalBal} ${g.unit||''}</span>
+        </div>
+        <div class="lot-table">
+          <div class="lot-row" style="font-size:11px;font-weight:600;color:var(--text3)">
+            <span style="min-width:130px">Lot No.</span>
+            <span style="min-width:90px">Expiry</span>
+            <span style="flex:1">Location</span>
+            <span style="min-width:60px;text-align:right">Balance</span>
+            <span style="min-width:100px;text-align:right">Status</span>
+          </div>
+          ${g.lots.map(r => `
+            <div class="lot-row">
+              <span class="lot-no">${r['Lot No.']||'-'}</span>
+              <span class="lot-exp">${fmtDate(r['Expiry Date'])}</span>
+              <span style="flex:1;font-size:12px;color:var(--text3)">${r['Location']||''}</span>
+              <span class="lot-qty" style="color:${(parseFloat(r['Balance / SOH'])||0)<=0?'var(--red)':'var(--text)'}">${r['Balance / SOH']} ${r['Unit']||''}</span>
+              <span style="min-width:100px;text-align:right">${expiryBadge(r['Expiry Date'])}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== EXPIRY =====
+function renderExpiry() {
+  const today_d = new Date();
+  const categorized = [
+    { label: '🔴 หมดอายุแล้ว', rows: [], cls: 'badge-red' },
+    { label: '🔴 เหลือ ≤ 30 วัน', rows: [], cls: 'badge-red' },
+    { label: '🟠 เหลือ 31–60 วัน', rows: [], cls: 'badge-orange' },
+    { label: '🟡 เหลือ 61–90 วัน', rows: [], cls: 'badge-yellow' },
+  ];
+  
+  state.stockBalance.forEach(r => {
+    const d = daysUntilExpiry(r['Expiry Date']);
+    if (d === null) return;
+    if (d < 0) categorized[0].rows.push({...r, daysLeft: d});
+    else if (d <= 30) categorized[1].rows.push({...r, daysLeft: d});
+    else if (d <= 60) categorized[2].rows.push({...r, daysLeft: d});
+    else if (d <= 90) categorized[3].rows.push({...r, daysLeft: d});
+  });
+  
+  return categorized.map(cat => {
+    if (!cat.rows.length) return '';
+    return `
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-header">
+          <div class="table-title">${cat.label} <span class="badge ${cat.cls}">${cat.rows.length} lots</span></div>
+        </div>
+        <table>
+          <tr><th>Brand</th><th>Code</th><th>Product Name</th><th>Lot No.</th><th>Expiry Date</th><th>เหลือ</th><th>Balance</th><th>Unit</th></tr>
+          ${cat.rows.sort((a,b) => a.daysLeft - b.daysLeft).map(r => `
+            <tr>
+              <td><span class="badge badge-gray" style="font-size:11px">${r['Brand']}</span></td>
+              <td class="code">${r['Product Code']}</td>
+              <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r['Product Name']||''}</td>
+              <td class="lot">${r['Lot No.']||''}</td>
+              <td>${fmtDate(r['Expiry Date'])}</td>
+              <td style="font-family:var(--mono);font-weight:600;color:${r.daysLeft<0?'var(--red)':r.daysLeft<=30?'var(--red)':r.daysLeft<=60?'var(--orange)':'var(--yellow)'}">
+                ${r.daysLeft < 0 ? `เกิน ${Math.abs(r.daysLeft)} วัน` : `${r.daysLeft} วัน`}
+              </td>
+              <td style="font-family:var(--mono)">${r['Balance / SOH']}</td>
+              <td>${r['Unit']||''}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== MOVEMENT IN =====
+function renderMovementIn() {
+  return `
+    <div class="two-col-grid">
+      <div>
+        <div class="table-wrap" style="padding:20px">
+          <div class="table-title" style="margin-bottom:8px">📥 บันทึกการรับสินค้าเข้า</div>
+          <div class="convert-hint" style="margin-bottom:12px">
+            💡 สินค้าใหม่ที่ยังไม่มีในระบบ → ไปเพิ่มที่ <strong>🏷️ Product Master</strong> ก่อน แล้วค่อยกลับมาบันทึก IN
+          </div>
+          <div class="form-grid two-col-grid">
+            <div class="form-group">
+              <label>Brand *</label>
+              <select class="form-control" id="in-brand" onchange="onBrandChange('in')">
+                ${makeOpts(state.dropdowns.brands)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Product Code *</label>
+              <select class="form-control" id="in-code" onchange="onCodeChange('in')">
+                <option value="">-- เลือก Brand ก่อน --</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Product Name</label>
+              <input class="form-control" id="in-name" readonly style="background:var(--surface3);color:var(--text3)">
+            </div>
+            <div class="form-group">
+              <label>Lot No. *</label>
+              <input class="form-control" id="in-lot" placeholder="e.g. LOT-2406001">
+            </div>
+            <div class="form-group">
+              <label>Expiry Date *</label>
+              <input class="form-control" type="date" id="in-expiry">
+            </div>
+            <div class="form-group">
+              <label>Quantity *</label>
+              <input class="form-control" type="number" id="in-qty" placeholder="0" min="1" oninput="calcPcs('in')">
+            </div>
+            <div class="form-group">
+              <label>Unit (รับเข้า) *</label>
+              <select class="form-control" id="in-unit" onchange="calcPcs('in')">
+                ${makeOpts(state.dropdowns.units)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Location *</label>
+              <select class="form-control" id="in-location">
+                ${makeOpts(state.dropdowns.locations.filter(l => l !== 'Expired'))}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Staff *</label>
+              <select class="form-control" id="in-staff">
+                ${makeOpts(state.dropdowns.staff)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ref / Invoice</label>
+              <input class="form-control" id="in-ref" placeholder="เลขที่ใบสั่งซื้อ...">
+            </div>
+            <div class="form-group">
+              <label>Supplier</label>
+              <select class="form-control" id="in-supplier">
+                ${makeOpts(state.dropdowns.suppliers)}
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Remark</label>
+              <input class="form-control" id="in-remark" placeholder="หมายเหตุ (ถ้ามี)">
+            </div>
+          </div>
+          <div id="in-convert-hint" class="convert-hint" style="display:none"></div>
+          <div style="margin-top:16px">
+            <button class="btn btn-primary" onclick="saveMovementIn()">💾 บันทึกรับสินค้าเข้า</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">📋 Lot ที่มีอยู่ของสินค้านี้</div></div>
+        <div id="in-existing-lots" style="padding:12px">
+          <div class="empty-state"><div class="icon">🏷️</div><p>เลือก Brand และ Code เพื่อดู Lot ที่มีอยู่</p></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function onBrandChange(prefix) {
+  const brand = document.getElementById(`${prefix}-brand`)?.value;
+  const codeEl = document.getElementById(`${prefix}-code`);
+  if (!codeEl) return;
+  const codes = brand ? getCodesForBrand(brand) : [];
+  codeEl.innerHTML = codes.length
+    ? `<option value="">เลือก Code...</option>` + codes.map(c => `<option value="${c}">${c}</option>`).join('')
+    : `<option value="">-- เลือก Brand ก่อน --</option>`;
+  if (document.getElementById(`${prefix}-name`)) document.getElementById(`${prefix}-name`).value = '';
+  if (prefix === 'in') updateExistingLots();
+  if (prefix === 'out') updateOutLots();
+}
+
+function onCodeChange(prefix) {
+  const brand = document.getElementById(`${prefix}-brand`)?.value;
+  const code = document.getElementById(`${prefix}-code`)?.value;
+  const name = getNameForCode(brand, code);
+  if (document.getElementById(`${prefix}-name`)) document.getElementById(`${prefix}-name`).value = name;
+  calcPcs(prefix);
+  if (prefix === 'in') updateExistingLots();
+  if (prefix === 'out') updateOutLots();
+}
+
+function calcPcs(prefix) {
+  const brand = document.getElementById(`${prefix}-brand`)?.value;
+  const code = document.getElementById(`${prefix}-code`)?.value;
+  const qty = parseFloat(document.getElementById(`${prefix}-qty`)?.value) || 0;
+  const unit = document.getElementById(`${prefix}-unit`)?.value;
+  const hint = document.getElementById(`${prefix}-convert-hint`);
+  if (!hint) return;
+  
+  const pcsPerBox = getPcsPerBox(brand, code);
+  if (pcsPerBox > 0 && unit === 'Box' && qty > 0) {
+    const totalPcs = qty * pcsPerBox;
+    hint.style.display = 'block';
+    hint.innerHTML = `📦 ${qty} กล่อง × ${pcsPerBox} ชิ้น/กล่อง = <strong>${totalPcs} ชิ้น</strong> (ในระบบจะบันทึกเป็น ${qty} ${unit})`;
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+function updateExistingLots() {
+  const brand = document.getElementById('in-brand')?.value;
+  const code = document.getElementById('in-code')?.value;
+  const el = document.getElementById('in-existing-lots');
+  if (!el) return;
+  if (!brand || !code) { el.innerHTML = '<div class="empty-state"><div class="icon">🏷️</div><p>เลือก Brand และ Code</p></div>'; return; }
+  
+  const lots = state.stockBalance.filter(r => r['Brand'] === brand && r['Product Code'] === code);
+  if (!lots.length) { el.innerHTML = '<div style="padding:12px;color:var(--text3);font-size:13px">ยังไม่มี Lot ในระบบ</div>'; return; }
+  
+  el.innerHTML = `<table>
+    <tr><th>Lot No.</th><th>Expiry</th><th>Balance</th><th>Status</th></tr>
+    ${lots.map(r => `<tr>
+      <td class="lot">${r['Lot No.']}</td>
+      <td style="font-size:12px">${fmtDate(r['Expiry Date'])}</td>
+      <td style="font-family:var(--mono)">${r['Balance / SOH']} ${r['Unit']||''}</td>
+      <td>${expiryBadge(r['Expiry Date'])}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+function saveMovementIn() {
+  const brand = document.getElementById('in-brand')?.value;
+  const code = document.getElementById('in-code')?.value;
+  const lot = document.getElementById('in-lot')?.value?.trim();
+  const expiry = document.getElementById('in-expiry')?.value;
+  const qty = parseFloat(document.getElementById('in-qty')?.value) || 0;
+  const unit = document.getElementById('in-unit')?.value;
+  const location = document.getElementById('in-location')?.value;
+  const staff = document.getElementById('in-staff')?.value;
+  const ref = document.getElementById('in-ref')?.value || '';
+  const supplier = document.getElementById('in-supplier')?.value || '';
+  const remark = document.getElementById('in-remark')?.value || '';
+  const name = document.getElementById('in-name')?.value || '';
+  
+  if (!brand || !code || !lot || !qty || !unit || !location || !staff) {
+    showToast('กรุณากรอกข้อมูลที่จำเป็น (Brand, Code, Lot, Qty, Unit, Location, Staff)', 'error');
+    return;
+  }
+  
+  // Add to movement log
+  state.movements.unshift({
+    Date: today(), Type: 'IN', Brand: brand, 'Product Code': code,
+    'Product Name': name, 'Lot No.': lot, 'Expiry Date': expiry || null,
+    Location: location, Qty: qty, Unit: unit, 'Ref / Invoice': ref,
+    'Customer / Supplier': supplier, Staff: staff, Remark: remark
+  });
+  
+  // Update or create stock balance
+  const existing = state.stockBalance.find(r => r['Brand'] === brand && r['Product Code'] === code && r['Lot No.'] === lot);
+  if (existing) {
+    existing['IN'] = (parseFloat(existing['IN']) || 0) + qty;
+    existing['Balance / SOH'] = (parseFloat(existing['Balance / SOH']) || 0) + qty;
+    existing['Balance (Pcs)'] = existing['Balance / SOH'];
+  } else {
+    const pm = getProductInfo(brand, code);
+    state.stockBalance.push({
+      Brand: brand, 'Product Code': code, 'Product Name': name,
+      'Lot No.': lot, 'Expiry Date': expiry || null, Location: location,
+      'Initial Qty': 0, IN: qty, OUT: 0, 'Adjust +': 0, 'Adjust -': 0,
+      'Balance / SOH': qty, 'Min Stock': pm ? parseFloat(pm['Min Stock'])||0 : 0,
+      'Expiry Status': 'OK', 'Reorder Alert': 'OK',
+      Unit: unit, 'Pcs/Box': pm ? parseFloat(pm['Pcs per Box'])||0 : 0,
+      'Balance (Pcs)': qty, 'Entry Unit': unit
+    });
+  }
+  
+  showToast(`บันทึกรับเข้า ${qty} ${unit} สำเร็จ`);
+  saveSharedState();
+  showPage('movement-in');
+}
+
+// ===== MOVEMENT OUT =====
+let outSelectedLot = null;
+function renderMovementOut() {
+  return `
+    <div class="two-col-grid">
+      <div>
+        <div class="table-wrap" style="padding:20px">
+          <div class="table-title" style="margin-bottom:16px">📤 บันทึกการตัดสินค้าออก</div>
+          <div class="form-grid two-col-grid">
+            <div class="form-group">
+              <label>Brand *</label>
+              <select class="form-control" id="out-brand" onchange="onBrandChange('out')">
+                ${makeOpts(state.dropdowns.brands)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Product Code *</label>
+              <select class="form-control" id="out-code" onchange="onCodeChange('out')">
+                <option value="">-- เลือก Brand ก่อน --</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Product Name</label>
+              <input class="form-control" id="out-name" readonly style="background:var(--surface3);color:var(--text3)">
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>เลือก Lot No. * <span style="font-size:10px;color:var(--text3)">(เลือกจาก Lot ที่มีในระบบ)</span></label>
+              <select class="form-control" id="out-lot" onchange="onLotChange()">
+                <option value="">-- เลือก Code ก่อน --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Expiry Date</label>
+              <input class="form-control" id="out-expiry" readonly style="background:var(--surface3);color:var(--text3)">
+            </div>
+            <div class="form-group">
+              <label>คงเหลือใน Lot นี้</label>
+              <input class="form-control" id="out-current" readonly style="background:var(--surface3);color:var(--text3)">
+            </div>
+            <div class="form-group">
+              <label>Quantity ที่ตัดออก *</label>
+              <input class="form-control" type="number" id="out-qty" placeholder="0" min="1" oninput="calcPcs('out')">
+            </div>
+            <div class="form-group">
+              <label>Unit *</label>
+              <select class="form-control" id="out-unit" onchange="calcPcs('out')">
+                ${makeOpts(state.dropdowns.units)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Staff *</label>
+              <select class="form-control" id="out-staff">
+                ${makeOpts(state.dropdowns.staff)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Customer</label>
+              <select class="form-control" id="out-customer">
+                ${makeOpts(state.dropdowns.customers)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ref / Invoice</label>
+              <input class="form-control" id="out-ref" placeholder="เลขที่เอกสาร...">
+            </div>
+            <div class="form-group">
+              <label>Remark</label>
+              <input class="form-control" id="out-remark" placeholder="หมายเหตุ">
+            </div>
+          </div>
+          <div id="out-convert-hint" class="convert-hint" style="display:none"></div>
+          <div style="margin-top:16px">
+            <button class="btn btn-danger" onclick="saveMovementOut()">✂️ ตัดสินค้าออก</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">📋 Lot ที่ใช้ได้ (เรียงตาม FEFO)</div></div>
+        <div id="out-lots-panel" style="padding:12px">
+          <div class="empty-state"><div class="icon">🏷️</div><p>เลือก Brand และ Code</p></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateOutLots() {
+  const brand = document.getElementById('out-brand')?.value;
+  const code = document.getElementById('out-code')?.value;
+  const lotEl = document.getElementById('out-lot');
+  const panel = document.getElementById('out-lots-panel');
+  if (!brand || !code) {
+    if (lotEl) lotEl.innerHTML = '<option value="">-- เลือก Code ก่อน --</option>';
+    if (panel) panel.innerHTML = '<div class="empty-state"><div class="icon">🏷️</div><p>เลือก Brand และ Code</p></div>';
+    return;
+  }
+  
+  // FEFO: First Expiry First Out - sort by expiry date, exclude expired location
+  const lots = state.stockBalance
+    .filter(r => r['Brand'] === brand && r['Product Code'] === code && (parseFloat(r['Balance / SOH'])||0) > 0)
+    .sort((a,b) => {
+      const da = daysUntilExpiry(a['Expiry Date']);
+      const db = daysUntilExpiry(b['Expiry Date']);
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    });
+  
+  if (lotEl) {
+    lotEl.innerHTML = lots.length
+      ? `<option value="">เลือก Lot...</option>` + lots.map(r => `<option value="${r['Lot No.']}">${r['Lot No.']} | หมดอายุ: ${fmtDate(r['Expiry Date'])} | คงเหลือ: ${r['Balance / SOH']} ${r['Unit']||''}</option>`).join('')
+      : `<option value="">ไม่มี Lot ที่ใช้ได้</option>`;
+  }
+  
+  if (panel) {
+    panel.innerHTML = lots.length ? `<table>
+      <tr><th>Lot No.</th><th>Expiry</th><th>Balance</th><th>Expiry Status</th></tr>
+      ${lots.map((r,i) => `<tr ${i===0?'style="background:var(--accent)0d"':''}>
+        <td class="lot">${r['Lot No.']}${i===0?' <span class="badge badge-blue" style="font-size:10px">FEFO ▶</span>':''}</td>
+        <td style="font-size:12px">${fmtDate(r['Expiry Date'])}</td>
+        <td style="font-family:var(--mono)">${r['Balance / SOH']} ${r['Unit']||''}</td>
+        <td>${expiryBadge(r['Expiry Date'])}</td>
+      </tr>`).join('')}
+    </table>` : '<div style="padding:12px;color:var(--text3)">ไม่มี Lot ที่ใช้ได้</div>';
+  }
+}
+
+function onLotChange() {
+  const brand = document.getElementById('out-brand')?.value;
+  const code = document.getElementById('out-code')?.value;
+  const lotNo = document.getElementById('out-lot')?.value;
+  const row = state.stockBalance.find(r => r['Brand'] === brand && r['Product Code'] === code && r['Lot No.'] === lotNo);
+  if (row) {
+    if (document.getElementById('out-expiry')) document.getElementById('out-expiry').value = row['Expiry Date'] || '';
+    if (document.getElementById('out-current')) document.getElementById('out-current').value = `${row['Balance / SOH']} ${row['Unit']||''}`;
+    if (document.getElementById('out-unit')) document.getElementById('out-unit').value = row['Unit'] || '';
+  }
+}
+
+function saveMovementOut() {
+  const brand = document.getElementById('out-brand')?.value;
+  const code = document.getElementById('out-code')?.value;
+  const lot = document.getElementById('out-lot')?.value;
+  const qty = parseFloat(document.getElementById('out-qty')?.value) || 0;
+  const unit = document.getElementById('out-unit')?.value;
+  const staff = document.getElementById('out-staff')?.value;
+  const customer = document.getElementById('out-customer')?.value || '';
+  const ref = document.getElementById('out-ref')?.value || '';
+  const remark = document.getElementById('out-remark')?.value || '';
+  const name = document.getElementById('out-name')?.value || '';
+  const expiry = document.getElementById('out-expiry')?.value || '';
+  
+  if (!brand || !code || !lot || !qty || !unit || !staff) {
+    showToast('กรุณากรอกข้อมูลที่จำเป็น (Brand, Code, Lot, Qty, Unit, Staff)', 'error');
+    return;
+  }
+  
+  const row = state.stockBalance.find(r => r['Brand'] === brand && r['Product Code'] === code && r['Lot No.'] === lot);
+  if (!row) { showToast('ไม่พบ Lot นี้ในระบบ', 'error'); return; }
+  
+  const currentBal = parseFloat(row['Balance / SOH']) || 0;
+  if (qty > currentBal) {
+    showToast(`จำนวนที่ตัดออก (${qty}) มากกว่าสินค้าคงเหลือ (${currentBal})`, 'error');
+    return;
+  }
+  
+  // Record movement
+  state.movements.unshift({
+    Date: today(), Type: 'OUT', Brand: brand, 'Product Code': code,
+    'Product Name': name, 'Lot No.': lot, 'Expiry Date': expiry,
+    Location: row['Location'], Qty: qty, Unit: unit, 'Ref / Invoice': ref,
+    'Customer / Supplier': customer, Staff: staff, Remark: remark
+  });
+  
+  // Update balance
+  row['OUT'] = (parseFloat(row['OUT']) || 0) + qty;
+  row['Balance / SOH'] = currentBal - qty;
+  row['Balance (Pcs)'] = row['Balance / SOH'];
+  
+  showToast(`ตัดออก ${qty} ${unit} จาก Lot ${lot} สำเร็จ`);
+  saveSharedState();
+  showPage('movement-out');
+}
+
+// ===== MOVEMENT LOG =====
+function renderMovementLog() {
+  const mvs = state.movements;
+  const html = `
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">ประวัติการเคลื่อนไหวทั้งหมด (${mvs.length} รายการ)</div>
+        <div class="filter-bar">
+          <select class="form-control" id="mv-type" style="min-width:110px" onchange="rerenderMovLog()">
+            <option value="">ทุกประเภท</option>
+            <option value="IN">📥 IN</option>
+            <option value="OUT">📤 OUT</option>
+            <option value="ADJUST+">➕ ADJUST+</option>
+            <option value="ADJUST-">➖ ADJUST-</option>
+          </select>
+          <select class="form-control" id="mv-brand" style="min-width:130px" onchange="rerenderMovLog()">
+            <option value="">ทุก Brand</option>
+            ${state.dropdowns.brands.map(b => `<option value="${b}">${b}</option>`).join('')}
+          </select>
+          <div class="search-input">
+            <input class="form-control" id="mv-search" placeholder="ค้นหา Code / Lot..." oninput="rerenderMovLog()">
+          </div>
+        </div>
+      </div>
+      <div id="mov-table" style="overflow-x:auto"></div>
+    </div>
+  `;
+  setTimeout(rerenderMovLog, 0);
+  return html;
+}
+
+function rerenderMovLog() {
+  const type = document.getElementById('mv-type')?.value || '';
+  const brand = document.getElementById('mv-brand')?.value || '';
+  const search = (document.getElementById('mv-search')?.value || '').toLowerCase();
+  
+  let rows = state.movements.filter(m => {
+    if (type && m['Type'] !== type) return false;
+    if (brand && m['Brand'] !== brand) return false;
+    if (search) {
+      const s = (m['Product Code']||'').toLowerCase() + ' ' + (m['Lot No.']||'').toLowerCase();
+      if (!s.includes(search)) return false;
+    }
+    return true;
+  });
+  
+  const el = document.getElementById('mov-table');
+  if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>ไม่พบรายการ</p></div>'; return; }
+  
+  el.innerHTML = `<table>
+    <tr><th>วันที่</th><th>Type</th><th>Brand</th><th>Code</th><th>Product Name</th><th>Lot No.</th><th>Expiry</th><th>Qty</th><th>Unit</th><th>Ref</th><th>Customer/Supplier</th><th>Staff</th></tr>
+    ${rows.map(m => `<tr>
+      <td style="font-size:12px">${fmtDate(m['Date'])}</td>
+      <td><span class="badge ${m['Type']==='IN'?'badge-green':m['Type']==='OUT'?'badge-red':'badge-blue'}">${m['Type']}</span></td>
+      <td style="font-size:12px">${m['Brand']||''}</td>
+      <td class="code">${m['Product Code']||''}</td>
+      <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px" title="${m['Product Name']||''}">${m['Product Name']||''}</td>
+      <td class="lot">${m['Lot No.']||''}</td>
+      <td style="font-size:11px">${fmtDate(m['Expiry Date'])}</td>
+      <td style="font-family:var(--mono);font-weight:600">${m['Qty']}</td>
+      <td style="font-size:12px">${m['Unit']||''}</td>
+      <td style="font-size:11px;color:var(--text3)">${m['Ref / Invoice']||''}</td>
+      <td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${m['Customer / Supplier']||''}">${m['Customer / Supplier']||''}</td>
+      <td style="font-size:12px">${m['Staff']||''}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+// ===== PRODUCTS =====
+function renderProducts() {
+  const search_input = `<div class="search-input"><input class="form-control" id="pm-search" placeholder="ค้นหา..." oninput="rerenderProducts()"></div>`;
+  const brand_sel = `<select class="form-control" id="pm-brand" style="min-width:130px" onchange="rerenderProducts()">
+    <option value="">ทุก Brand</option>
+    ${state.dropdowns.brands.map(b => `<option value="${b}">${b}</option>`).join('')}
+  </select>`;
+  
+  const html = `
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">Product Master (${state.products.length} รายการ)</div>
+        <div class="filter-bar">${brand_sel}${search_input}</div>
+      </div>
+      <div id="pm-table"></div>
+    </div>
+  `;
+  setTimeout(rerenderProducts, 0);
+  return html;
+}
+
+function rerenderProducts() {
+  const brand = document.getElementById('pm-brand')?.value || '';
+  const search = (document.getElementById('pm-search')?.value || '').toLowerCase();
+  let rows = state.products.filter(p => {
+    if (brand && p['Brand'] !== brand) return false;
+    if (search) {
+      const s = (p['Product Code']||'').toLowerCase() + ' ' + (p['Product Name']||'').toLowerCase();
+      if (!s.includes(search)) return false;
+    }
+    return true;
+  });
+  
+  const el = document.getElementById('pm-table');
+  if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>ไม่พบสินค้า</p></div>'; return; }
+  
+  el.innerHTML = `<div style="overflow-x:auto"><table>
+    <tr><th>Brand</th><th>Code</th><th>Product Name</th><th>Category</th><th>Unit</th><th>Min Stock</th><th>Pcs/Box</th><th>Supplier</th><th></th></tr>
+    ${rows.map((p,i) => `<tr>
+      <td><span class="badge badge-gray" style="font-size:11px">${p['Brand']||''}</span></td>
+      <td class="code">${p['Product Code']||''}</td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p['Product Name']||''}">${p['Product Name']||''}</td>
+      <td style="font-size:12px">${p['Category']||''}</td>
+      <td style="font-size:12px">${p['Unit']||''}</td>
+      <td style="font-family:var(--mono);font-size:12px">${p['Min Stock']||0}</td>
+      <td style="font-family:var(--mono);font-size:12px">${p['Pcs per Box']||0}</td>
+      <td style="font-size:12px">${p['Supplier']||''}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="editProduct(${state.products.findIndex(x => x['Brand']===p['Brand'] && x['Product Code']===p['Product Code'] && x['Product Name']===p['Product Name'])})">✏️</button></td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+function openAddProduct() {
+  const body = `
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Brand *</label>
+        <select class="form-control" id="mp-brand">${makeOpts(state.dropdowns.brands)}</select>
+      </div>
+      <div class="form-group">
+        <label>Product Code *</label>
+        <input class="form-control" id="mp-code" placeholder="e.g. H-3001">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Product Name *</label>
+        <input class="form-control" id="mp-name" placeholder="ชื่อสินค้า">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select class="form-control" id="mp-cat">${makeOpts(state.dropdowns.categories)}</select>
+      </div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select class="form-control" id="mp-unit">${makeOpts(state.dropdowns.units)}</select>
+      </div>
+      <div class="form-group">
+        <label>Min Stock</label>
+        <input class="form-control" type="number" id="mp-min" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Pcs per Box</label>
+        <input class="form-control" type="number" id="mp-pcs" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Supplier</label>
+        <select class="form-control" id="mp-sup">${makeOpts(state.dropdowns.suppliers)}</select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Remark</label>
+        <input class="form-control" id="mp-remark" placeholder="หมายเหตุ">
+      </div>
+    </div>
+  `;
+  openModal('เพิ่มสินค้าใหม่', body, `
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveNewProduct()">💾 บันทึก</button>
+  `);
+}
+
+function saveNewProduct() {
+  const brand = document.getElementById('mp-brand')?.value;
+  const code = document.getElementById('mp-code')?.value?.trim();
+  const name = document.getElementById('mp-name')?.value?.trim();
+  if (!brand || !code || !name) { showToast('กรุณากรอก Brand, Code, Name', 'error'); return; }
+  
+  state.products.push({
+    Brand: brand, 'Product Code': code, 'Product Name': name,
+    Category: document.getElementById('mp-cat')?.value || '',
+    Unit: document.getElementById('mp-unit')?.value || 'Pcs.',
+    'Min Stock': parseFloat(document.getElementById('mp-min')?.value) || 0,
+    'Pcs per Box': parseFloat(document.getElementById('mp-pcs')?.value) || 0,
+    Supplier: document.getElementById('mp-sup')?.value || '',
+    Remark: document.getElementById('mp-remark')?.value || null
+  });
+  
+  closeModal();
+  showToast(`เพิ่มสินค้า ${code} สำเร็จ`);
+  saveSharedState();
+  render();
+}
+
+function editProduct(idx) {
+  const p = state.products[idx];
+  if (!p) return;
+  const body = `
+    <div class="form-grid">
+      <div class="form-group"><label>Brand</label><select class="form-control" id="ep-brand">${state.dropdowns.brands.map(b => `<option value="${b}"${p['Brand']===b?' selected':''}>${b}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Product Code</label><input class="form-control" id="ep-code" value="${p['Product Code']||''}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Product Name</label><input class="form-control" id="ep-name" value="${(p['Product Name']||'').replace(/"/g,'&quot;')}"></div>
+      <div class="form-group"><label>Category</label><select class="form-control" id="ep-cat">${state.dropdowns.categories.map(c => `<option value="${c}"${p['Category']===c?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Unit</label><select class="form-control" id="ep-unit">${state.dropdowns.units.map(u => `<option value="${u}"${p['Unit']===u?' selected':''}>${u}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Min Stock</label><input class="form-control" type="number" id="ep-min" value="${p['Min Stock']||0}"></div>
+      <div class="form-group"><label>Pcs per Box</label><input class="form-control" type="number" id="ep-pcs" value="${p['Pcs per Box']||0}"></div>
+    </div>
+  `;
+  openModal('แก้ไขสินค้า', body, `
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="updateProduct(${idx})">💾 บันทึก</button>
+  `);
+}
+
+function updateProduct(idx) {
+  const p = state.products[idx];
+  p['Brand'] = document.getElementById('ep-brand')?.value;
+  p['Product Code'] = document.getElementById('ep-code')?.value?.trim();
+  p['Product Name'] = document.getElementById('ep-name')?.value?.trim();
+  p['Category'] = document.getElementById('ep-cat')?.value;
+  p['Unit'] = document.getElementById('ep-unit')?.value;
+  p['Min Stock'] = parseFloat(document.getElementById('ep-min')?.value) || 0;
+  p['Pcs per Box'] = parseFloat(document.getElementById('ep-pcs')?.value) || 0;
+  closeModal();
+  showToast('อัปเดตสินค้าสำเร็จ');
+  saveSharedState();
+  render();
+}
+
+function openAdjustStock(idx) {
+  const r = state.stockBalance[idx];
+  if (!r) return;
+  const body = `
+    <div style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:6px;font-size:12px">
+      <b>${r['Brand']} — ${r['Product Code']}</b> | Lot: ${r['Lot No.']||'-'}<br>
+      Balance ปัจจุบัน: <span style="font-family:var(--mono);font-weight:600">${r['Balance / SOH']} ${r['Unit']||''}</span>
+      &nbsp;|&nbsp; Min Stock: <span style="font-family:var(--mono)">${r['Min Stock']||0}</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>ประเภทการปรับ</label>
+        <select class="form-control" id="adj-type">
+          <option value="set">กำหนดค่าใหม่ (Set)</option>
+          <option value="add">เพิ่ม (+)</option>
+          <option value="sub">ลด (-)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>จำนวน</label>
+        <input class="form-control" type="number" id="adj-qty" min="0" placeholder="0">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>หมายเหตุ (เหตุผลการปรับ)</label>
+        <input class="form-control" id="adj-note" placeholder="เช่น ตรวจนับสต็อก, สินค้าเสียหาย...">
+      </div>
+    </div>`;
+  openModal('ปรับสต็อก', body, `
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveAdjustStock(${idx})">💾 บันทึก</button>
+  `);
+}
+
+function saveAdjustStock(idx) {
+  const r = state.stockBalance[idx];
+  if (!r) return;
+  const type = document.getElementById('adj-type')?.value;
+  const qty = parseFloat(document.getElementById('adj-qty')?.value) || 0;
+  const note = document.getElementById('adj-note')?.value || '';
+  const oldBal = parseFloat(r['Balance / SOH']) || 0;
+  let newBal;
+  if (type === 'set') newBal = qty;
+  else if (type === 'add') newBal = oldBal + qty;
+  else newBal = oldBal - qty;
+  r['Balance / SOH'] = newBal;
+  r['Balance (Pcs)'] = newBal;
+  const adjType = type === 'set' ? 'ADJUST' : type === 'add' ? 'ADJUST+' : 'ADJUST-';
+  state.movements.unshift({
+    Date: today(), Type: adjType, Brand: r['Brand'], 'Product Code': r['Product Code'],
+    'Product Name': r['Product Name'], 'Lot No.': r['Lot No.'], 'Expiry Date': r['Expiry Date'],
+    Location: r['Location'], Qty: qty, Unit: r['Unit'] || '',
+    'Ref / Invoice': '', 'Customer / Supplier': '', Staff: '', Remark: note
+  });
+  closeModal();
+  showToast(`ปรับสต็อก ${r['Product Code']} เป็น ${newBal} ${r['Unit']||''} สำเร็จ`);
+  saveSharedState();
+  render();
+}
+
+
+function exportCSV() {
+  const rows = state.stockBalance;
+  const headers = ['Brand','Product Code','Product Name','Lot No.','Expiry Date','Location','Balance / SOH','Unit','Min Stock','Reorder Alert'];
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${r[h]||''}"`).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'stock_balance.csv';
+  a.click();
+  showToast('Export CSV สำเร็จ');
+}
+
+
+// ===== SETTINGS - reusable list manager =====
+function renderListManager(title, icon, key, placeholder, extraHint='') {
+  const items = state.dropdowns[key] || [];
+  return `
+    <div class="table-wrap" style="max-width:600px">
+      <div class="table-header">
+        <div class="table-title">${icon} ${title} <span class="badge badge-blue">${items.length} รายการ</span></div>
+      </div>
+      <div style="padding:16px">
+        ${extraHint ? `<div class="convert-hint" style="margin-bottom:12px">${extraHint}</div>` : ''}
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <input class="form-control" id="new-${key}" placeholder="${placeholder}" style="flex:1"
+            onkeydown="if(event.key==='Enter') addListItem('${key}')">
+          <button class="btn btn-primary" onclick="addListItem('${key}')">＋ เพิ่ม</button>
+        </div>
+        <div id="list-${key}">
+          ${renderListItems(key)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderListItems(key) {
+  const items = state.dropdowns[key] || [];
+  if (!items.length) return '<div class="empty-state" style="padding:24px"><div class="icon">📭</div><p>ยังไม่มีรายการ</p></div>';
+  return `<table>
+    <tr><th>#</th><th>ชื่อ</th><th></th></tr>
+    ${items.map((item, i) => `
+      <tr>
+        <td style="color:var(--text3);font-size:12px;width:40px">${i+1}</td>
+        <td>${item}</td>
+        <td style="width:80px">
+          <button class="btn btn-danger btn-sm" onclick="removeListItem('${key}',${i})" title="ลบ">🗑️</button>
+        </td>
+      </tr>
+    `).join('')}
+  </table>`;
+}
+
+function addListItem(key) {
+  const input = document.getElementById('new-' + key);
+  const val = input?.value?.trim();
+  if (!val) { showToast('กรุณากรอกชื่อ', 'error'); return; }
+  if ((state.dropdowns[key] || []).includes(val)) { showToast('มีรายการนี้อยู่แล้ว', 'error'); return; }
+  state.dropdowns[key] = [...(state.dropdowns[key] || []), val];
+  input.value = '';
+  saveSharedState();
+  document.getElementById('list-' + key).innerHTML = renderListItems(key);
+  showToast(`เพิ่ม "${val}" สำเร็จ`);
+}
+
+function removeListItem(key, idx) {
+  const item = state.dropdowns[key][idx];
+  if (!confirm(`ลบ "${item}" ออกจากรายการ?`)) return;
+  state.dropdowns[key] = state.dropdowns[key].filter((_,i) => i !== idx);
+  saveSharedState();
+  document.getElementById('list-' + key).innerHTML = renderListItems(key);
+  showToast(`ลบ "${item}" แล้ว`);
+}
+
+// ===== SETTINGS PAGES =====
+function renderSettingsCustomers() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="convert-hint">
+        💡 Customer ที่เพิ่มที่นี่จะขึ้นใน dropdown "Customer" ตอนบันทึกการตัดสินค้าออก (OUT)
+      </div>
+      ${renderListManager('รายชื่อ Customer / ลูกค้า / คลินิก', '🏥', 'customers', 'ชื่อ Customer หรือคลินิก...')}
+    </div>
+  `;
+}
+
+function renderSettingsStaff() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="convert-hint">
+        💡 Staff ที่เพิ่มที่นี่จะขึ้นใน dropdown "Staff" ในทุกหน้าบันทึก IN/OUT
+      </div>
+      ${renderListManager('รายชื่อ Staff / พนักงาน', '👤', 'staff', 'ชื่อ Staff...')}
+    </div>
+  `;
+}
+
+function renderSettingsDropdowns() {
+  return `
+    <div class="two-col-grid" style="gap:16px">
+      ${renderListManager('Brand / ยี่ห้อ', '🏭', 'brands', 'ชื่อ Brand...',
+        '💡 Brand ที่เพิ่มจะขึ้นใน dropdown เวลาเพิ่มสินค้าใหม่ หรือบันทึก IN/OUT')}
+      ${renderListManager('Location / ที่เก็บ', '📍', 'locations', 'ชื่อ Location...',
+        '💡 Location ที่เพิ่มจะขึ้นใน dropdown เวลาบันทึกรับสินค้าเข้า')}
+      ${renderListManager('หน่วยสินค้า (Unit)', '📐', 'units', 'ชื่อหน่วย เช่น Box, Pcs., Vial...')}
+      ${renderListManager('Category', '🗂️', 'categories', 'ชื่อ Category...')}
+      ${renderListManager('Supplier', '🚚', 'suppliers', 'ชื่อ Supplier...',
+        '💡 Supplier ที่เพิ่มจะขึ้นใน dropdown เวลาบันทึกรับสินค้าเข้า')}
+    </div>
+  `;
+}
+
+
+// ===== MOBILE SIDEBAR =====
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+// Auto-close sidebar on nav item click (mobile)
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    if (window.innerWidth <= 700) closeSidebar();
+  });
+});
+
+// ===== INIT =====
+loadSharedState();
+</script>
+</body>
+</html>
